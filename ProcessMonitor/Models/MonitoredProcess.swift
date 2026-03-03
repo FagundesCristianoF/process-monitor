@@ -1,0 +1,98 @@
+import Foundation
+
+struct ProcessDefinition: Identifiable, Equatable, Hashable, Codable {
+    let id: String
+    var displayName: String
+    var patterns: [String]
+    var defaultLimitMB: Int
+
+    func matches(command: String) -> Bool {
+        let lowered = command.lowercased()
+        return patterns.contains { lowered.contains($0.lowercased()) }
+    }
+}
+
+extension ProcessDefinition {
+    static let builtInDefaults: [ProcessDefinition] = [
+        ProcessDefinition(
+            id: "cursor",
+            displayName: "Cursor",
+            patterns: ["Cursor.app"],
+            defaultLimitMB: 4096
+        ),
+        ProcessDefinition(
+            id: "proxyman",
+            displayName: "Proxyman",
+            patterns: ["Proxyman.app"],
+            defaultLimitMB: 1024
+        ),
+        ProcessDefinition(
+            id: "java",
+            displayName: "Java",
+            patterns: ["java"],
+            defaultLimitMB: 4096
+        ),
+        ProcessDefinition(
+            id: "gradle",
+            displayName: "Gradle",
+            patterns: ["gradlew", "GradleDaemon", "gradle-launcher"],
+            defaultLimitMB: 2048
+        ),
+        ProcessDefinition(
+            id: "vscode",
+            displayName: "VS Code",
+            patterns: ["Visual Studio Code.app"],
+            defaultLimitMB: 4096
+        ),
+        ProcessDefinition(
+            id: "android_studio",
+            displayName: "Android Studio",
+            patterns: ["Android Studio"],
+            defaultLimitMB: 6144
+        ),
+        ProcessDefinition(
+            id: "xcode",
+            displayName: "Xcode",
+            patterns: ["Xcode.app/Contents/MacOS"],
+            defaultLimitMB: 8192
+        )
+    ]
+}
+
+enum ProcessStatus: Equatable {
+    case notRunning
+    case running
+    case overLimit
+}
+
+struct MonitoredProcess: Identifiable, Equatable {
+    let id: String
+    let definition: ProcessDefinition
+    let status: ProcessStatus
+    let rootPids: [pid_t]
+    let totalMemoryMB: Double
+    let totalSwapMB: Double
+    let children: [ProcessChild]
+    let memoryLimitMB: Int
+    let appBundlePath: String?
+
+    var formattedMemory: String {
+        guard status != .notRunning else { return "--" }
+        return formatMemory(totalMemoryMB)
+    }
+
+    var formattedSwap: String {
+        guard status != .notRunning else { return "--" }
+        return formatMemory(totalSwapMB)
+    }
+
+    var formattedLimit: String {
+        formatMemory(Double(memoryLimitMB))
+    }
+
+    var childGroups: [ProcessChildGroup] {
+        let grouped = Dictionary(grouping: children, by: \.command)
+        return grouped.map { ProcessChildGroup(name: $0.key, children: $0.value) }
+            .sorted { $0.totalMemoryMB > $1.totalMemoryMB }
+    }
+}
