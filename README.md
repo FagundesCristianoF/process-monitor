@@ -67,3 +67,21 @@ Click the gear icon in the popover to open Settings, where you can:
 - Reset everything to the built-in defaults
 
 Settings are persisted in UserDefaults.
+
+## Homebrew
+
+This repo includes a tap-ready cask at `Casks/processmonitor.rb`.
+
+To publish it through Homebrew:
+
+1. Build and notarize the app bundle:
+
+   ```bash
+   make export
+   make notarize
+   ```
+
+2. Create a GitHub release tagged `v1.0`.
+3. Upload the notarized `ProcessMonitor.zip` from `export/`.
+4. Keep the cask `sha256` in sync with the uploaded zip.
+5. Publish the cask from a tap repository (recommended: `homebrew-processmonitor`) or use this file as the source for your tap.
