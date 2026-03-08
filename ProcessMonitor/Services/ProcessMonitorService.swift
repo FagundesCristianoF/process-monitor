@@ -3,6 +3,9 @@ import Combine
 import Darwin
 
 final class ProcessMonitorService: ObservableObject {
+    typealias ProcessEntriesProvider = () -> [RawProcessEntry]
+    typealias PollPublisherFactory = (TimeInterval) -> Timer.TimerPublisher
+
     @Published var processes: [MonitoredProcess] = []
     @Published var totalMemoryMB: Double = 0
 
@@ -10,20 +13,33 @@ final class ProcessMonitorService: ObservableObject {
     private let configStore: ProcessConfigStore
     private let notificationService: NotificationService
     private let pollInterval: TimeInterval
+    private let processEntriesProvider: ProcessEntriesProvider?
+    private let pollPublisherFactory: PollPublisherFactory
+
+    var isPolling: Bool {
+        timer != nil
+    }
 
     init(
         configStore: ProcessConfigStore = ProcessConfigStore(),
         notificationService: NotificationService = NotificationService(),
-        pollInterval: TimeInterval = 5
+        pollInterval: TimeInterval = 5,
+        processEntriesProvider: ProcessEntriesProvider? = nil,
+        pollPublisherFactory: @escaping PollPublisherFactory = {
+            Timer.publish(every: $0, on: .main, in: .common)
+        }
     ) {
         self.configStore = configStore
         self.notificationService = notificationService
         self.pollInterval = pollInterval
+        self.processEntriesProvider = processEntriesProvider
+        self.pollPublisherFactory = pollPublisherFactory
     }
 
     func startPolling() {
+        guard timer == nil else { return }
         refresh()
-        timer = Timer.publish(every: pollInterval, on: .main, in: .common)
+        timer = pollPublisherFactory(pollInterval)
             .autoconnect()
             .sink { [weak self] _ in self?.refresh() }
     }
@@ -36,7 +52,7 @@ final class ProcessMonitorService: ObservableObject {
     func refresh() {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
-            let rawEntries = self.fetchProcessEntries()
+            let rawEntries = self.processEntriesProvider?() ?? self.fetchProcessEntries()
             let grouped = self.buildGroupedProcesses(from: rawEntries)
             DispatchQueue.main.async {
                 self.processes = grouped

@@ -51,8 +51,6 @@ struct ProcessListView: View {
             Divider()
             footer
         }
-        .onAppear { monitorService.startPolling() }
-        .onDisappear { monitorService.stopPolling() }
     }
 
     // MARK: - Header

@@ -8,6 +8,11 @@ let package = Package(
         .executableTarget(
             name: "ProcessMonitor",
             path: "ProcessMonitor"
+        ),
+        .testTarget(
+            name: "ProcessMonitorTests",
+            dependencies: ["ProcessMonitor"],
+            path: "Tests/ProcessMonitorTests"
         )
     ]
 )

@@ -1,5 +1,22 @@
 import SwiftUI
 
+private struct MenuBarIconLabel: View {
+    @ObservedObject var monitorService: ProcessMonitorService
+
+    private var hasWarning: Bool {
+        hasOverLimitProcess(monitorService.processes)
+    }
+
+    var body: some View {
+        Image(systemName: hasWarning
+            ? "exclamationmark.triangle.fill"
+            : "cpu"
+        )
+        .symbolRenderingMode(.palette)
+        .foregroundStyle(hasWarning ? .orange : .primary)
+    }
+}
+
 @main
 struct ProcessMonitorApp: App {
     @StateObject private var configStore: ProcessConfigStore
@@ -11,21 +28,19 @@ struct ProcessMonitorApp: App {
         let config = ProcessConfigStore()
         let launchAtLogin = LaunchAtLoginStore()
         let notifications = NotificationService()
+        let monitor = ProcessMonitorService(
+            configStore: config,
+            notificationService: notifications
+        )
         _configStore = StateObject(wrappedValue: config)
         _launchAtLoginStore = StateObject(wrappedValue: launchAtLogin)
         _notificationService = StateObject(wrappedValue: notifications)
-        _monitorService = StateObject(
-            wrappedValue: ProcessMonitorService(
-                configStore: config,
-                notificationService: notifications
-            )
-        )
+        _monitorService = StateObject(wrappedValue: monitor)
         launchAtLogin.ensureRegistered()
         notifications.requestPermissionIfNeeded()
-    }
-
-    private var hasWarning: Bool {
-        monitorService.processes.contains { $0.status == .overLimit }
+        DispatchQueue.main.async {
+            monitor.startPolling()
+        }
     }
 
     var body: some Scene {
@@ -37,12 +52,7 @@ struct ProcessMonitorApp: App {
             )
             .frame(width: 420, height: 520)
         } label: {
-            Image(systemName: hasWarning
-                ? "exclamationmark.triangle.fill"
-                : "cpu"
-            )
-            .symbolRenderingMode(.palette)
-            .foregroundStyle(hasWarning ? .orange : .primary)
+            MenuBarIconLabel(monitorService: monitorService)
         }
         .menuBarExtraStyle(.window)
     }
