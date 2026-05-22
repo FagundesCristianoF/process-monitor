@@ -320,15 +320,7 @@ private struct DefinitionRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "app.dashed")
-                    .font(.system(size: 16, weight: .light))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.tint)
-                    .frame(width: 24, height: 24)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(.tint.opacity(0.12))
-                    )
+                AppIconBadge(definition: definition, size: 28)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(definition.displayName)

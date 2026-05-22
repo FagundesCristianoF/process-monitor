@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct ProcessRowView: View {
     let process: MonitoredProcess
@@ -29,6 +30,7 @@ struct ProcessRowView: View {
     private var mainRow: some View {
         HStack(spacing: 10) {
             expandButton
+            appIcon
             statusIcon
             nameLabel
             Spacer(minLength: 6)
@@ -60,6 +62,15 @@ struct ProcessRowView: View {
         } else {
             Spacer().frame(width: 10)
         }
+    }
+
+    private var appIcon: some View {
+        AppIconBadge(
+            definition: process.definition,
+            bundlePath: process.appBundlePath,
+            size: 22,
+            dimmed: process.status == .notRunning
+        )
     }
 
     private var statusIcon: some View {

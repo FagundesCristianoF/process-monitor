@@ -27,14 +27,14 @@ final class SettingsWindowController {
 
         let newWindow = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 500, height: 600),
-            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
+            styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
         newWindow.title = NSLocalizedString("Process Monitor Settings", comment: "Settings window title")
-        newWindow.titlebarAppearsTransparent = true
+        newWindow.titlebarAppearsTransparent = false
         newWindow.titleVisibility = .visible
-        newWindow.isMovableByWindowBackground = true
+        newWindow.isMovableByWindowBackground = false
         newWindow.contentView = hostingView
         newWindow.center()
         newWindow.isReleasedWhenClosed = false

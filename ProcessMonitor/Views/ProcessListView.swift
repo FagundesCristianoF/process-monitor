@@ -1,4 +1,46 @@
 import SwiftUI
+import AppKit
+
+private struct WindowOpaqueAccessor: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let v = NSView()
+        DispatchQueue.main.async {
+            applyOpaque(to: v.window)
+        }
+        return v
+    }
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            applyOpaque(to: nsView.window)
+        }
+    }
+
+    private func applyOpaque(to window: NSWindow?) {
+        guard let window else { return }
+        window.isOpaque = true
+        window.backgroundColor = NSColor.windowBackgroundColor
+        window.hasShadow = true
+        if let contentView = window.contentView {
+            contentView.wantsLayer = true
+            contentView.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+            disableVibrancy(in: contentView)
+        }
+    }
+
+    /// Recursively neutralize any NSVisualEffectView so the window no longer
+    /// pulls vibrancy from the desktop behind it.
+    private func disableVibrancy(in view: NSView) {
+        if let visual = view as? NSVisualEffectView {
+            visual.material = .windowBackground
+            visual.blendingMode = .behindWindow
+            visual.state = .inactive
+            visual.isHidden = true
+        }
+        for sub in view.subviews {
+            disableVibrancy(in: sub)
+        }
+    }
+}
 
 enum ProcessSortOrder: String, CaseIterable {
     case active = "Active"
@@ -13,6 +55,10 @@ enum ProcessSortOrder: String, CaseIterable {
         case .memory: return "memorychip"
         case .added: return "list.number"
         }
+    }
+
+    var localizedLabel: String {
+        NSLocalizedString(self.rawValue, comment: "Sort option")
     }
 }
 
@@ -61,7 +107,9 @@ struct ProcessListView: View {
             Divider().opacity(0.5)
             footer
         }
-        .background(.regularMaterial)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .background(WindowOpaqueAccessor())
     }
 
     // MARK: - Header
@@ -141,7 +189,7 @@ struct ProcessListView: View {
     // MARK: - Sort Bar
 
     private var sortBar: some View {
-        HStack(spacing: 6) {
+        VStack(spacing: 6) {
             HStack(spacing: 2) {
                 ForEach(ProcessSortOrder.allCases, id: \.self) { option in
                     Button(action: {
@@ -149,11 +197,14 @@ struct ProcessListView: View {
                             sortOrder = option.rawValue
                         }
                     }) {
-                        Label(option.rawValue, systemImage: option.icon)
+                        Label(option.localizedLabel, systemImage: option.icon)
                             .labelStyle(.titleAndIcon)
                             .font(.caption2.weight(.medium))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 3)
+                            .frame(maxWidth: .infinity)
                             .background(
                                 RoundedRectangle(cornerRadius: 5, style: .continuous)
                                     .fill(.background.opacity(selectedSort == option ? 0.9 : 0))
@@ -174,8 +225,6 @@ struct ProcessListView: View {
                     .fill(.quaternary.opacity(0.4))
             )
 
-            Spacer()
-
             Toggle(isOn: $filterWarningsOnly.animation(.easeOut(duration: 0.15))) {
                 Label("Warnings only", systemImage: "exclamationmark.triangle.fill")
                     .labelStyle(.titleAndIcon)
@@ -184,6 +233,7 @@ struct ProcessListView: View {
             }
             .toggleStyle(.switch)
             .controlSize(.mini)
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
