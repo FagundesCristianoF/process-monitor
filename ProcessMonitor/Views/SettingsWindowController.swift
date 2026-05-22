@@ -11,6 +11,7 @@ final class SettingsWindowController {
         configStore: ProcessConfigStore,
         launchAtLoginStore: LaunchAtLoginStore
     ) {
+        dismissMenuBarPopover()
         if let existing = window, existing.isVisible {
             existing.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -22,15 +23,18 @@ final class SettingsWindowController {
             launchAtLoginStore: launchAtLoginStore
         )
         let hostingView = NSHostingView(rootView: settingsView)
-        hostingView.frame = NSRect(x: 0, y: 0, width: 400, height: 480)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 500, height: 600)
 
         let newWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 480),
-            styleMask: [.titled, .closable, .resizable],
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 600),
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         newWindow.title = NSLocalizedString("Process Monitor Settings", comment: "Settings window title")
+        newWindow.titlebarAppearsTransparent = true
+        newWindow.titleVisibility = .visible
+        newWindow.isMovableByWindowBackground = true
         newWindow.contentView = hostingView
         newWindow.center()
         newWindow.isReleasedWhenClosed = false
@@ -39,5 +43,17 @@ final class SettingsWindowController {
 
         NSApp.activate(ignoringOtherApps: true)
         self.window = newWindow
+    }
+
+    /// Close the MenuBarExtra popover window (its class name contains "MenuBarExtraWindow"
+    /// or "NSStatusBarWindow"). Called when opening Settings so the popover doesn't
+    /// linger alongside the new window.
+    private func dismissMenuBarPopover() {
+        for win in NSApp.windows where win.isVisible {
+            let cls = String(describing: type(of: win))
+            if cls.contains("MenuBarExtra") || cls.contains("NSStatusBarWindow") || cls.contains("Popover") {
+                win.close()
+            }
+        }
     }
 }

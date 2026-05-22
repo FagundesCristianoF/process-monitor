@@ -19,48 +19,56 @@ struct ProcessChildRowView: View {
 
     private var mainRow: some View {
         HStack(spacing: 8) {
-            Text("├")
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(.secondary)
+            Circle()
+                .fill(.tertiary)
+                .frame(width: 3, height: 3)
+                .frame(width: 10)
 
             Text(child.command)
                 .font(.system(.caption, design: .monospaced))
                 .lineLimit(1)
                 .truncationMode(.middle)
+                .foregroundStyle(.tertiary)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(String(format: NSLocalizedString("PID %d", comment: "Process ID label"), child.id))
-                .font(.caption2)
+                .font(.system(.caption2, design: .monospaced))
+                .monospacedDigit()
                 .foregroundStyle(.tertiary)
 
             Text(child.formattedCPU)
                 .font(.system(.caption2, design: .monospaced))
+                .monospacedDigit()
                 .foregroundStyle(.tertiary)
+                .frame(width: 32, alignment: .trailing)
 
             VStack(alignment: .trailing, spacing: 0) {
                 Text(child.formattedMemory)
                     .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
                 Text(String(format: NSLocalizedString("%@ sw", comment: "Swap memory short label"), child.formattedSwap))
                     .font(.system(.caption2, design: .monospaced))
+                    .monospacedDigit()
                     .foregroundStyle(.tertiary)
             }
-            .frame(width: 64, alignment: .trailing)
+            .frame(width: 70, alignment: .trailing)
 
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.15)) {
                     confirmingKill.toggle()
                 }
             }) {
-                Image(systemName: confirmingKill ? "xmark" : "xmark.circle.fill")
-                    .font(.caption)
-                    .foregroundStyle(confirmingKill ? .secondary : .secondary)
+                Image(systemName: confirmingKill ? "xmark" : "minus.circle")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 16, height: 16)
             }
             .buttonStyle(.plain)
-            .help(confirmingKill ? "Cancel" : "Kill this process")
+            .help(confirmingKill ? NSLocalizedString("Cancel", comment: "") : NSLocalizedString("Kill this process", comment: ""))
         }
-        .padding(.leading, 24)
-        .padding(.trailing, 12)
+        .padding(.leading, 28)
+        .padding(.trailing, 14)
         .padding(.vertical, 2)
     }
 

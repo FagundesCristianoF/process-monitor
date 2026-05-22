@@ -54,87 +54,139 @@ struct ProcessListView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            Divider().opacity(0.5)
             sortBar
-            Divider()
+            Divider().opacity(0.5)
             processList
-            Divider()
+            Divider().opacity(0.5)
             footer
         }
+        .background(.regularMaterial)
     }
 
     // MARK: - Header
 
     private var header: some View {
-        HStack {
-            Label("Process Monitor", systemImage: "cpu")
-                .font(.headline)
+        HStack(spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "gauge.with.dots.needle.67percent")
+                    .font(.system(size: 14, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.tint)
+                Text("Process Monitor")
+                    .font(.system(.headline, design: .rounded, weight: .semibold))
+            }
 
             Spacer()
 
-            Button(action: { configStore.isPaused.toggle() }) {
-                Image(systemName: configStore.isPaused ? "play.fill" : "pause.fill")
-                    .font(.callout)
-            }
-            .buttonStyle(.plain)
-            .help(configStore.isPaused ? "Resume monitoring" : "Pause monitoring")
-
-            Button(action: { monitorService.refresh() }) {
-                Image(systemName: "arrow.clockwise")
-                    .font(.callout)
-            }
-            .buttonStyle(.plain)
-            .help("Refresh now")
-            .disabled(configStore.isPaused)
-
-            Button(action: {
-                SettingsWindowController.shared.open(
-                    configStore: configStore,
-                    launchAtLoginStore: launchAtLoginStore
+            HStack(spacing: 2) {
+                toolbarButton(
+                    icon: configStore.isPaused ? "play.fill" : "pause.fill",
+                    tint: configStore.isPaused ? .orange : .secondary,
+                    help: configStore.isPaused
+                        ? NSLocalizedString("Resume monitoring", comment: "")
+                        : NSLocalizedString("Pause monitoring", comment: ""),
+                    action: { configStore.isPaused.toggle() }
                 )
-            }) {
-                Image(systemName: "gearshape")
-                    .font(.callout)
+
+                toolbarButton(
+                    icon: "arrow.clockwise",
+                    tint: .secondary,
+                    help: NSLocalizedString("Refresh now", comment: ""),
+                    disabled: configStore.isPaused,
+                    action: { monitorService.refresh() }
+                )
+
+                toolbarButton(
+                    icon: "gearshape.fill",
+                    tint: .secondary,
+                    help: NSLocalizedString("Settings", comment: ""),
+                    action: {
+                        SettingsWindowController.shared.open(
+                            configStore: configStore,
+                            launchAtLoginStore: launchAtLoginStore
+                        )
+                    }
+                )
             }
-            .buttonStyle(.plain)
-            .help("Settings")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
     }
 
+    private func toolbarButton(
+        icon: String,
+        tint: Color,
+        help: String,
+        disabled: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .frame(width: 24, height: 22)
+                .foregroundStyle(disabled ? AnyShapeStyle(.tertiary) : AnyShapeStyle(tint))
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(.quaternary.opacity(0.0001))
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .help(help)
+    }
+
     // MARK: - Sort Bar
 
     private var sortBar: some View {
-        HStack(spacing: 2) {
-            ForEach(ProcessSortOrder.allCases, id: \.self) { option in
-                Button(action: { sortOrder = option.rawValue }) {
-                    Label(option.rawValue, systemImage: option.icon)
-                        .font(.caption2)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(selectedSort == option ? Color.accentColor.opacity(0.15) : Color.clear)
-                        .foregroundStyle(selectedSort == option ? Color.accentColor : .secondary)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
+        HStack(spacing: 6) {
+            HStack(spacing: 2) {
+                ForEach(ProcessSortOrder.allCases, id: \.self) { option in
+                    Button(action: {
+                        withAnimation(.easeOut(duration: 0.15)) {
+                            sortOrder = option.rawValue
+                        }
+                    }) {
+                        Label(option.rawValue, systemImage: option.icon)
+                            .labelStyle(.titleAndIcon)
+                            .font(.caption2.weight(.medium))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(
+                                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                    .fill(.background.opacity(selectedSort == option ? 0.9 : 0))
+                                    .shadow(
+                                        color: .black.opacity(selectedSort == option ? 0.08 : 0),
+                                        radius: 2,
+                                        y: 1
+                                    )
+                            )
+                            .foregroundStyle(selectedSort == option ? Color.primary : .secondary)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
-
-            Button(action: { filterWarningsOnly.toggle() }) {
-                Label("Warnings only", systemImage: "exclamationmark.triangle")
-                    .font(.caption2)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(filterWarningsOnly ? Color.accentColor.opacity(0.15) : Color.clear)
-                    .foregroundStyle(filterWarningsOnly ? Color.accentColor : .secondary)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-            }
-            .buttonStyle(.plain)
+            .padding(2)
+            .background(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(.quaternary.opacity(0.4))
+            )
 
             Spacer()
+
+            Toggle(isOn: $filterWarningsOnly.animation(.easeOut(duration: 0.15))) {
+                Label("Warnings only", systemImage: "exclamationmark.triangle.fill")
+                    .labelStyle(.titleAndIcon)
+                    .font(.caption2)
+                    .foregroundStyle(filterWarningsOnly ? .orange : .secondary)
+            }
+            .toggleStyle(.switch)
+            .controlSize(.mini)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 
     // MARK: - Process List
@@ -143,10 +195,18 @@ struct ProcessListView: View {
         let sorted = sortedProcesses
         return Group {
             if filterWarningsOnly && sorted.isEmpty {
-                VStack {
+                VStack(spacing: 10) {
                     Spacer()
+                    Image(systemName: "checkmark.shield.fill")
+                        .font(.system(size: 32, weight: .light))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.green)
                     Text("No warnings")
+                        .font(.system(.callout, design: .rounded, weight: .medium))
                         .foregroundStyle(.secondary)
+                    Text("Everything within limits.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -162,10 +222,13 @@ struct ProcessListView: View {
                                 onKillChild: { pid in monitorService.killProcess(pid: pid) }
                             )
                             if process.id != sorted.last?.id {
-                                Divider().padding(.horizontal, 12)
+                                Divider()
+                                    .opacity(0.4)
+                                    .padding(.horizontal, 14)
                             }
                         }
                     }
+                    .padding(.vertical, 2)
                 }
             }
         }
@@ -174,21 +237,38 @@ struct ProcessListView: View {
     // MARK: - Footer
 
     private var footer: some View {
-        HStack {
-            Text("Total: \(formatMemory(monitorService.totalMemoryMB))")
-                .font(.system(.callout, design: .monospaced))
-                .foregroundStyle(.secondary)
+        HStack(spacing: 8) {
+            HStack(spacing: 4) {
+                Image(systemName: "memorychip")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.tertiary)
+                Text("Total")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                Text(formatMemory(monitorService.totalMemoryMB))
+                    .font(.system(.callout, design: .monospaced, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+            }
 
             Spacer()
 
-            Button("Quit") {
-                NSApplication.shared.terminate(nil)
+            Button(action: { NSApplication.shared.terminate(nil) }) {
+                Text("Quit")
+                    .font(.system(.caption, design: .rounded, weight: .medium))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(.quaternary.opacity(0.5))
+                    )
+                    .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .font(.callout)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
     }
 }

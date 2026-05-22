@@ -66,4 +66,27 @@ final class NotificationService: ObservableObject {
             }
         }
     }
+
+    func notifyAutoRestart(processName: String, memoryMB: Double, limitMB: Int) {
+        guard Bundle.main.bundleIdentifier != nil else { return }
+        let content = UNMutableNotificationContent()
+        content.title = NSLocalizedString("Auto-Restart", comment: "Auto-restart notification title")
+        let bodyFormat = NSLocalizedString(
+            "Restarting %1$@ — used %2$@ (limit: %3$@).",
+            comment: "Auto-restart body. %1=name, %2=memory, %3=limit"
+        )
+        content.body = String(
+            format: bodyFormat,
+            processName,
+            formatMemory(memoryMB),
+            formatMemory(Double(limitMB))
+        )
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: "autorestart_\(processName)_\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request) { _ in }
+    }
 }

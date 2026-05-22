@@ -32,40 +32,49 @@ struct ProcessChildGroupRowView: View {
                 .font(.system(.caption, design: .monospaced))
                 .lineLimit(1)
                 .truncationMode(.middle)
+                .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if group.count > 1 {
                 Text("×\(group.count)")
-                    .font(.caption2)
-                    .fontWeight(.medium)
-                    .padding(.horizontal, 5)
+                    .font(.caption2.weight(.semibold))
+                    .monospacedDigit()
+                    .padding(.horizontal, 6)
                     .padding(.vertical, 1)
-                    .background(.quaternary)
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .background(
+                        Capsule().fill(.quaternary.opacity(0.6))
+                    )
+                    .foregroundStyle(.secondary)
             }
 
             Text(group.formattedCPU)
                 .font(.system(.caption2, design: .monospaced))
+                .monospacedDigit()
                 .foregroundStyle(.tertiary)
+                .frame(width: 32, alignment: .trailing)
 
             VStack(alignment: .trailing, spacing: 0) {
                 Text(group.formattedMemory)
-                    .font(.system(.caption, design: .monospaced))
+                    .font(.system(.caption, design: .monospaced, weight: .medium))
+                    .monospacedDigit()
                     .foregroundStyle(.secondary)
                 Text(String(format: NSLocalizedString("%@ sw", comment: "Swap memory short label"), group.formattedSwap))
                     .font(.system(.caption2, design: .monospaced))
+                    .monospacedDigit()
                     .foregroundStyle(.tertiary)
             }
-            .frame(width: 64, alignment: .trailing)
+            .frame(width: 70, alignment: .trailing)
 
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.15)) {
                     confirmingKill.toggle()
                 }
             }) {
-                Image(systemName: confirmingKill ? "xmark" : "xmark.circle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Image(systemName: confirmingKill ? "xmark" : "minus.circle.fill")
+                    .font(.system(size: 11))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(confirmingKill ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.red.opacity(0.7)))
+                    .frame(width: 16, height: 16)
             }
             .buttonStyle(.plain)
             .help(
@@ -76,9 +85,9 @@ struct ProcessChildGroupRowView: View {
                     : NSLocalizedString("Kill this process", comment: "Kill a single process"))
             )
         }
-        .padding(.leading, 24)
-        .padding(.trailing, 12)
-        .padding(.vertical, 2)
+        .padding(.leading, 28)
+        .padding(.trailing, 14)
+        .padding(.vertical, 3)
         .contentShape(Rectangle())
         .onTapGesture {
             guard group.count > 1 else { return }
@@ -91,14 +100,17 @@ struct ProcessChildGroupRowView: View {
     @ViewBuilder
     private var expandIndicator: some View {
         if group.count > 1 {
-            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                .font(.system(size: 7))
+            Image(systemName: "chevron.right")
+                .font(.system(size: 8, weight: .semibold))
                 .foregroundStyle(.tertiary)
-                .frame(width: 8)
+                .frame(width: 10)
+                .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                .animation(.easeOut(duration: 0.18), value: isExpanded)
         } else {
-            Text("├")
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(.secondary)
+            Circle()
+                .fill(.tertiary)
+                .frame(width: 3, height: 3)
+                .frame(width: 10)
         }
     }
 

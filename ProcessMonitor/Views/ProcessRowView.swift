@@ -27,22 +27,22 @@ struct ProcessRowView: View {
     // MARK: - Main Row
 
     private var mainRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             expandButton
             statusIcon
             nameLabel
-            Spacer()
+            Spacer(minLength: 6)
             sparkline
             memoryLabel
             killButton
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
         .background(rowBackground)
         .contentShape(Rectangle())
         .onTapGesture {
             guard process.status != .notRunning, !process.childGroups.isEmpty else { return }
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(.easeInOut(duration: 0.22)) {
                 isExpanded.toggle()
             }
         }
@@ -51,12 +51,14 @@ struct ProcessRowView: View {
     @ViewBuilder
     private var expandButton: some View {
         if process.status != .notRunning && !process.childGroups.isEmpty {
-            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .frame(width: 12)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(.tertiary)
+                .frame(width: 10)
+                .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                .animation(.easeOut(duration: 0.18), value: isExpanded)
         } else {
-            Spacer().frame(width: 12)
+            Spacer().frame(width: 10)
         }
     }
 
@@ -65,24 +67,33 @@ struct ProcessRowView: View {
             switch process.status {
             case .notRunning:
                 Circle()
-                    .fill(.gray.opacity(0.4))
-                    .frame(width: 8, height: 8)
+                    .fill(.gray.opacity(0.35))
+                    .frame(width: 7, height: 7)
+                    .overlay(
+                        Circle().stroke(.gray.opacity(0.2), lineWidth: 0.5)
+                    )
             case .running:
                 Circle()
-                    .fill(.green)
-                    .frame(width: 8, height: 8)
+                    .fill(LinearGradient(
+                        colors: [.green, Color.green.opacity(0.75)],
+                        startPoint: .top, endPoint: .bottom
+                    ))
+                    .frame(width: 7, height: 7)
+                    .shadow(color: .green.opacity(0.5), radius: 2)
             case .overLimit:
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.caption2)
+                    .font(.system(size: 10, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.orange)
             }
         }
+        .frame(width: 12)
     }
 
     private var nameLabel: some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(process.definition.displayName)
-                .font(.system(.body, weight: .medium))
+                .font(.system(.callout, weight: .semibold))
                 .lineLimit(1)
 
             if process.status != .notRunning && !process.children.isEmpty {
@@ -100,7 +111,11 @@ struct ProcessRowView: View {
                     groupsLabel
                 ))
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.tertiary)
+            } else if process.status == .notRunning {
+                Text("Not running")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
         }
     }
@@ -110,18 +125,21 @@ struct ProcessRowView: View {
             HStack(spacing: 6) {
                 if process.status != .notRunning {
                     Text(process.formattedCPU)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                        .font(.system(.caption, design: .monospaced, weight: .medium))
+                        .monospacedDigit()
+                        .foregroundStyle(.tertiary)
                 }
                 Text(process.formattedMemory)
-                    .font(.system(.callout, design: .monospaced))
+                    .font(.system(.callout, design: .monospaced, weight: .semibold))
+                    .monospacedDigit()
                     .foregroundStyle(process.status == .overLimit ? .orange : .primary)
             }
 
             if process.status != .notRunning {
                 Text(String(format: NSLocalizedString("%@ swap", comment: "Swap memory label"), process.formattedSwap))
                     .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
             }
         }
         .frame(width: 120, alignment: .trailing)
@@ -131,23 +149,33 @@ struct ProcessRowView: View {
     private var sparkline: some View {
         if process.status != .notRunning && process.memoryHistory.count >= 2 {
             let samples = Array(process.memoryHistory.suffix(60))
+            let accent: Color = process.status == .overLimit ? .orange : .accentColor
             Canvas { ctx, size in
                 guard let maxVal = samples.max(), maxVal > 0 else { return }
                 let stepX = samples.count > 1 ? size.width / CGFloat(samples.count - 1) : 0
-                var path = Path()
+                var line = Path()
                 for (i, v) in samples.enumerated() {
                     let x = CGFloat(i) * stepX
                     let norm = CGFloat(v / maxVal)
-                    let y = size.height - (norm * size.height)
-                    if i == 0 {
-                        path.move(to: CGPoint(x: x, y: y))
-                    } else {
-                        path.addLine(to: CGPoint(x: x, y: y))
-                    }
+                    let y = size.height - (norm * (size.height - 1)) - 0.5
+                    if i == 0 { line.move(to: CGPoint(x: x, y: y)) }
+                    else { line.addLine(to: CGPoint(x: x, y: y)) }
                 }
-                ctx.stroke(path, with: .color(Color.accentColor.opacity(0.7)), lineWidth: 1)
+                var fill = line
+                fill.addLine(to: CGPoint(x: size.width, y: size.height))
+                fill.addLine(to: CGPoint(x: 0, y: size.height))
+                fill.closeSubpath()
+                ctx.fill(
+                    fill,
+                    with: .linearGradient(
+                        Gradient(colors: [accent.opacity(0.35), accent.opacity(0.0)]),
+                        startPoint: CGPoint(x: 0, y: 0),
+                        endPoint: CGPoint(x: 0, y: size.height)
+                    )
+                )
+                ctx.stroke(line, with: .color(accent.opacity(0.85)), lineWidth: 1.2)
             }
-            .frame(width: 50, height: 16)
+            .frame(width: 56, height: 18)
         }
     }
 
@@ -155,21 +183,29 @@ struct ProcessRowView: View {
     private var killButton: some View {
         if process.status != .notRunning {
             Button(action: {
-                withAnimation(.easeInOut(duration: 0.15)) {
+                withAnimation(.easeInOut(duration: 0.18)) {
                     confirmingKill.toggle()
                 }
             }) {
-                Text(confirmingKill ? "Cancel" : "Kill")
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(confirmingKill ? .gray.opacity(0.15) : .red.opacity(0.15))
-                    .foregroundStyle(confirmingKill ? Color.secondary : Color.red)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                Image(systemName: confirmingKill ? "xmark" : "power")
+                    .font(.system(size: 10, weight: .bold))
+                    .frame(width: 22, height: 22)
+                    .foregroundStyle(confirmingKill ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.red))
+                    .background(
+                        Circle()
+                            .fill(confirmingKill ? AnyShapeStyle(.quaternary) : AnyShapeStyle(Color.red.opacity(0.12)))
+                    )
+                    .overlay(
+                        Circle().stroke(
+                            confirmingKill ? Color.gray.opacity(0.2) : Color.red.opacity(0.25),
+                            lineWidth: 0.5
+                        )
+                    )
             }
             .buttonStyle(.plain)
+            .help(confirmingKill ? NSLocalizedString("Cancel", comment: "") : NSLocalizedString("Kill", comment: ""))
         } else {
-            Spacer().frame(width: 48)
+            Spacer().frame(width: 22)
         }
     }
 
@@ -177,55 +213,99 @@ struct ProcessRowView: View {
 
     private var killConfirmBar: some View {
         HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.octagon.fill")
+                .font(.system(size: 10, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.red)
             Text(process.definition.displayName)
-                .font(.caption)
+                .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
 
             Spacer()
 
             if process.appBundlePath != nil {
-                Button(action: {
-                    withAnimation { confirmingKill = false }
-                    onRestart()
-                }) {
-                    Text("Restart")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 3)
-                        .background(.blue)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                }
-                .buttonStyle(.plain)
+                confirmActionButton(
+                    title: NSLocalizedString("Restart", comment: ""),
+                    tint: .blue,
+                    action: {
+                        withAnimation { confirmingKill = false }
+                        onRestart()
+                    }
+                )
             }
 
-            Button(action: {
-                withAnimation { confirmingKill = false }
-                onKillGroup()
-            }) {
-                Text("Kill All")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 3)
-                    .background(.red)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-            }
-            .buttonStyle(.plain)
+            confirmActionButton(
+                title: NSLocalizedString("Kill All", comment: ""),
+                tint: .red,
+                action: {
+                    withAnimation { confirmingKill = false }
+                    onKillGroup()
+                }
+            )
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 6)
-        .background(Color.red.opacity(0.06))
-        .transition(.opacity)
+        .padding(.vertical, 7)
+        .background(
+            ZStack {
+                Color.red.opacity(0.08)
+                LinearGradient(
+                    colors: [Color.red.opacity(0.05), Color.clear],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+        )
+        .overlay(
+            Rectangle()
+                .fill(Color.red.opacity(0.25))
+                .frame(height: 0.5),
+            alignment: .top
+        )
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
+    private func confirmActionButton(
+        title: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule().fill(
+                        LinearGradient(
+                            colors: [tint, tint.opacity(0.85)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                )
+                .overlay(
+                    Capsule().stroke(.white.opacity(0.15), lineWidth: 0.5)
+                )
+                .foregroundStyle(.white)
+                .shadow(color: tint.opacity(0.35), radius: 3, y: 1)
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
     private var rowBackground: some View {
         if process.status == .overLimit {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(.orange.opacity(0.08))
+            LinearGradient(
+                colors: [Color.orange.opacity(0.12), Color.orange.opacity(0.03)],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .overlay(
+                Rectangle()
+                    .fill(Color.orange.opacity(0.6))
+                    .frame(width: 2),
+                alignment: .leading
+            )
         }
     }
 

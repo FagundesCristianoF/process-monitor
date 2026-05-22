@@ -1,123 +1,300 @@
 import SwiftUI
+import AppKit
+
+// MARK: - Reusable Style Components
+
+struct SettingsLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 8) {
+            configuration.icon
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.secondary)
+                .frame(width: 14)
+            configuration.title
+                .font(.system(.callout))
+        }
+    }
+}
+
+struct SettingsSection<Content: View>: View {
+    let title: String
+    let icon: String
+    var trailing: AnyView? = nil
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.tint)
+                Text(title)
+                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                    .textCase(.uppercase)
+                    .tracking(0.6)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if let trailing { trailing }
+            }
+            .padding(.horizontal, 4)
+
+            content()
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(.background.opacity(0.5))
+                )
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(.quaternary.opacity(0.3))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(.quaternary.opacity(0.6), lineWidth: 0.5)
+                )
+        }
+    }
+}
+
+private struct LanguageOption: Identifiable, Hashable {
+    let id: String
+    let code: String?
+    let label: String
+}
+
+private let supportedLanguages: [LanguageOption] = [
+    LanguageOption(id: "system", code: nil, label: "System default"),
+    LanguageOption(id: "en", code: "en", label: "English"),
+    LanguageOption(id: "pt-BR", code: "pt-BR", label: "Português (Brasil)"),
+    LanguageOption(id: "es", code: "es", label: "Español"),
+    LanguageOption(id: "fr", code: "fr", label: "Français"),
+    LanguageOption(id: "de", code: "de", label: "Deutsch")
+]
 
 struct SettingsView: View {
     @ObservedObject var configStore: ProcessConfigStore
     @ObservedObject var launchAtLoginStore: LaunchAtLoginStore
     @State private var showAddForm = false
+    @State private var showRestartAlert = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-            definitionsList
-            Divider()
-            footerButtons
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                processesSection
+                preferencesSection
+                privacySection
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 18)
         }
-        .frame(minWidth: 380, minHeight: 460)
+        .frame(minWidth: 460, minHeight: 560)
+        .background(.regularMaterial)
         .sheet(isPresented: $showAddForm) {
             AddProcessView { definition in
                 configStore.addDefinition(definition)
             }
         }
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        HStack {
-            Label("Monitored Processes", systemImage: "list.bullet.rectangle")
-                .font(.headline)
-
-            Spacer()
-
-            Button(action: { showAddForm = true }) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title3)
+        .alert(
+            "Restart required",
+            isPresented: $showRestartAlert,
+            actions: {
+                Button("Restart now", role: .destructive) { Self.relaunch() }
+                Button("Later", role: .cancel) {}
+            },
+            message: {
+                Text("Process Monitor needs to restart to apply the new language.")
             }
-            .buttonStyle(.plain)
-            .help("Add a process to monitor")
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        )
     }
 
-    // MARK: - List
+    // MARK: - Processes Section
 
-    private var definitionsList: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
+    private var processesSection: some View {
+        SettingsSection(
+            title: NSLocalizedString("Monitored Processes", comment: ""),
+            icon: "list.bullet.rectangle.fill",
+            trailing: AnyView(
+                Button(action: { showAddForm = true }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("Add")
+                            .font(.system(.caption, design: .rounded, weight: .semibold))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule().fill(
+                            LinearGradient(
+                                colors: [.accentColor, .accentColor.opacity(0.85)],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        )
+                    )
+                    .foregroundStyle(.white)
+                    .shadow(color: .accentColor.opacity(0.3), radius: 3, y: 1)
+                }
+                .buttonStyle(.plain)
+                .help("Add a process to monitor")
+            )
+        ) {
+            VStack(spacing: 0) {
                 ForEach(configStore.definitions) { def in
                     DefinitionRow(
                         definition: def,
                         currentLimit: configStore.limit(for: def.id),
+                        autoRestartLimit: configStore.autoRestartLimit(for: def.id),
                         onLimitChanged: { configStore.setLimit($0, for: def.id) },
+                        onAutoRestartChanged: { configStore.setAutoRestartLimit($0, for: def.id) },
                         onRemove: { configStore.removeDefinition(id: def.id) }
                     )
                     if def.id != configStore.definitions.last?.id {
-                        Divider().padding(.horizontal, 16)
+                        Divider().opacity(0.5).padding(.horizontal, 14)
                     }
                 }
             }
-            .padding(.vertical, 8)
         }
     }
 
-    // MARK: - Footer
+    // MARK: - Preferences
 
-    private var footerButtons: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Toggle(
-                "Launch at login",
-                isOn: Binding(
-                    get: { launchAtLoginStore.isEnabled },
-                    set: { launchAtLoginStore.setEnabled($0) }
-                )
-            )
-            .toggleStyle(.switch)
-
-            if let statusMessage = launchAtLoginStore.statusMessage {
-                Text(statusMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack(spacing: 8) {
-                Text("Refresh every")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Slider(
-                    value: $configStore.pollIntervalSeconds,
-                    in: ProcessConfigStore.minPollInterval...ProcessConfigStore.maxPollInterval,
-                    step: 1
-                )
-                Text("\(Int(configStore.pollIntervalSeconds))s")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 32, alignment: .trailing)
-            }
-
-            Toggle(
-                "Send crash reports & diagnostics",
-                isOn: $configStore.telemetryEnabled
-            )
-            .toggleStyle(.switch)
-
-            Text("Anonymous crash/error reports help fix bugs. Process names are stripped before sending.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            HStack {
-                Button("Reset to Defaults") {
-                    configStore.resetToDefaults()
+    private var preferencesSection: some View {
+        SettingsSection(
+            title: NSLocalizedString("Preferences", comment: ""),
+            icon: "slider.horizontal.3"
+        ) {
+            VStack(spacing: 0) {
+                settingsRow {
+                    HStack {
+                        Label("Language", systemImage: "globe")
+                            .labelStyle(SettingsLabelStyle())
+                        Spacer()
+                        Picker("", selection: languageBinding) {
+                            ForEach(supportedLanguages) { lang in
+                                Text(lang.label).tag(lang.id)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 200)
+                    }
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-
-                Spacer()
+                Divider().opacity(0.5).padding(.horizontal, 14)
+                settingsRow {
+                    Toggle(isOn: Binding(
+                        get: { launchAtLoginStore.isEnabled },
+                        set: { launchAtLoginStore.setEnabled($0) }
+                    )) {
+                        Label("Launch at login", systemImage: "power.circle")
+                            .labelStyle(SettingsLabelStyle())
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                }
+                if let statusMessage = launchAtLoginStore.statusMessage {
+                    HStack {
+                        Image(systemName: "info.circle")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Text(statusMessage)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 8)
+                }
+                Divider().opacity(0.5).padding(.horizontal, 14)
+                settingsRow {
+                    HStack(spacing: 12) {
+                        Label("Refresh every", systemImage: "clock.arrow.circlepath")
+                            .labelStyle(SettingsLabelStyle())
+                            .layoutPriority(1)
+                        Slider(
+                            value: $configStore.pollIntervalSeconds,
+                            in: ProcessConfigStore.minPollInterval...ProcessConfigStore.maxPollInterval,
+                            step: 1
+                        )
+                        Text("\(Int(configStore.pollIntervalSeconds))s")
+                            .font(.system(.caption, design: .monospaced, weight: .medium))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                            .frame(width: 32, alignment: .trailing)
+                    }
+                }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+    }
+
+    // MARK: - Privacy
+
+    private var privacySection: some View {
+        SettingsSection(
+            title: NSLocalizedString("Privacy", comment: ""),
+            icon: "lock.shield.fill"
+        ) {
+            VStack(spacing: 0) {
+                settingsRow {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Toggle(isOn: $configStore.telemetryEnabled) {
+                            Label("Send crash reports & diagnostics", systemImage: "ladybug")
+                                .labelStyle(SettingsLabelStyle())
+                        }
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        Text("Anonymous crash/error reports help fix bugs. Process names are stripped before sending.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.leading, 22)
+                    }
+                }
+                Divider().opacity(0.5).padding(.horizontal, 14)
+                settingsRow {
+                    HStack {
+                        Label("Reset to Defaults", systemImage: "arrow.counterclockwise.circle")
+                            .labelStyle(SettingsLabelStyle())
+                        Spacer()
+                        Button(action: { configStore.resetToDefaults() }) {
+                            Text("Reset")
+                                .font(.system(.caption, design: .rounded, weight: .medium))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Capsule().fill(.quaternary.opacity(0.6)))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    private func settingsRow<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+    }
+
+    private var languageBinding: Binding<String> {
+        Binding(
+            get: { configStore.preferredLanguage ?? "system" },
+            set: { newValue in
+                let newCode = newValue == "system" ? nil : newValue
+                guard newCode != configStore.preferredLanguage else { return }
+                configStore.preferredLanguage = newCode
+                showRestartAlert = true
+            }
+        )
+    }
+
+    private static func relaunch() {
+        let bundleURL = Bundle.main.bundleURL
+        let config = NSWorkspace.OpenConfiguration()
+        config.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: bundleURL, configuration: config) { _, _ in
+            DispatchQueue.main.async {
+                NSApplication.shared.terminate(nil)
+            }
+        }
     }
 }
 
@@ -126,34 +303,62 @@ struct SettingsView: View {
 private struct DefinitionRow: View {
     let definition: ProcessDefinition
     let currentLimit: Int
+    let autoRestartLimit: Int?
     let onLimitChanged: (Int) -> Void
+    let onAutoRestartChanged: (Int?) -> Void
     let onRemove: () -> Void
 
     @State private var showConfirmRemove = false
     @State private var limitMB: Double = 0
+    @State private var autoRestartEnabled: Bool = false
+    @State private var autoRestartMB: Double = 0
 
     private static let minMB: Double = 64
     private static let maxMB: Double = 32768 // 32 GB
     private static let stepMB: Double = 64
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "app.dashed")
+                    .font(.system(size: 16, weight: .light))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.tint)
+                    .frame(width: 24, height: 24)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(.tint.opacity(0.12))
+                    )
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(definition.displayName)
-                        .font(.system(.body, weight: .medium))
+                        .font(.system(.callout, weight: .semibold))
 
-                    Text(definition.patterns.joined(separator: ", "))
-                        .font(.caption)
+                    Text(definition.patterns.joined(separator: " · "))
+                        .font(.system(.caption2, design: .monospaced))
                         .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
 
                 Spacer()
 
+                Text(formatMemory(Double(currentLimit)))
+                    .font(.system(.caption, design: .monospaced, weight: .medium))
+                    .monospacedDigit()
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule().fill(.quaternary.opacity(0.5))
+                    )
+                    .foregroundStyle(.secondary)
+
                 Button(action: { showConfirmRemove = true }) {
                     Image(systemName: "trash")
-                        .font(.caption)
+                        .font(.system(size: 11))
+                        .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.red.opacity(0.7))
+                        .frame(width: 22, height: 22)
                 }
                 .buttonStyle(.plain)
                 .help("Remove from monitoring")
@@ -170,37 +375,94 @@ private struct DefinitionRow: View {
                 )
             }
 
-            HStack(spacing: 8) {
-                Slider(
+            VStack(spacing: 6) {
+                limitSliderRow(
+                    iconColor: .orange,
+                    icon: "exclamationmark.triangle.fill",
+                    label: NSLocalizedString("Warn at", comment: "Warning threshold label"),
                     value: $limitMB,
-                    in: Self.minMB...Self.maxMB,
-                    step: Self.stepMB
-                ) {
-                    EmptyView()
-                }
-                .onChange(of: limitMB) { newValue in
-                    onLimitChanged(Int(newValue))
-                }
-
-                Text(formatMemory(Double(currentLimit)))
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 60, alignment: .trailing)
-
-                Stepper(
-                    "",
-                    value: $limitMB,
-                    in: Self.minMB...Self.maxMB,
-                    step: Self.stepMB
+                    onChange: { onLimitChanged(Int($0)) }
                 )
-                .labelsHidden()
-                .frame(width: 36)
+
+                HStack(spacing: 8) {
+                    Toggle(isOn: $autoRestartEnabled) {
+                        Label(NSLocalizedString("Auto-restart", comment: "Auto-restart toggle"), systemImage: "arrow.triangle.2.circlepath")
+                            .labelStyle(SettingsLabelStyle())
+                            .font(.caption)
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .onChange(of: autoRestartEnabled) { enabled in
+                        if enabled {
+                            if autoRestartMB < limitMB { autoRestartMB = min(Self.maxMB, limitMB * 1.5) }
+                            onAutoRestartChanged(Int(autoRestartMB))
+                        } else {
+                            onAutoRestartChanged(nil)
+                        }
+                    }
+                    Spacer()
+                    if autoRestartEnabled {
+                        Text(formatMemory(autoRestartMB))
+                            .font(.system(.caption2, design: .monospaced, weight: .medium))
+                            .monospacedDigit()
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(.red.opacity(0.12)))
+                            .foregroundStyle(.red)
+                    }
+                }
+
+                if autoRestartEnabled {
+                    limitSliderRow(
+                        iconColor: .red,
+                        icon: "arrow.triangle.2.circlepath",
+                        label: NSLocalizedString("Restart at", comment: "Auto-restart threshold label"),
+                        value: $autoRestartMB,
+                        onChange: { onAutoRestartChanged(Int($0)) }
+                    )
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
             }
+            .animation(.easeOut(duration: 0.18), value: autoRestartEnabled)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .onAppear {
             limitMB = Double(currentLimit)
+            if let auto = autoRestartLimit {
+                autoRestartEnabled = true
+                autoRestartMB = Double(auto)
+            } else {
+                autoRestartMB = Double(currentLimit) * 1.5
+            }
+        }
+    }
+
+    private func limitSliderRow(
+        iconColor: Color,
+        icon: String,
+        label: String,
+        value: Binding<Double>,
+        onChange: @escaping (Double) -> Void
+    ) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(iconColor)
+                .frame(width: 14)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(width: 64, alignment: .leading)
+            Slider(value: value, in: Self.minMB...Self.maxMB, step: Self.stepMB)
+                .controlSize(.small)
+                .onChange(of: value.wrappedValue) { newValue in
+                    onChange(newValue)
+                }
+            Stepper("", value: value, in: Self.minMB...Self.maxMB, step: Self.stepMB)
+                .labelsHidden()
+                .controlSize(.mini)
         }
     }
 }
@@ -226,83 +488,115 @@ private struct AddProcessView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            HStack(spacing: 8) {
+                Image(systemName: "plus.app.fill")
+                    .font(.system(size: 16))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.tint)
                 Text("Add Process")
-                    .font(.headline)
+                    .font(.system(.headline, design: .rounded, weight: .semibold))
                 Spacer()
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
 
-            Divider()
+            Divider().opacity(0.5)
 
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Display Name")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 18) {
+                fieldGroup(
+                    label: NSLocalizedString("Display Name", comment: ""),
+                    icon: "textformat"
+                ) {
                     TextField("e.g. Docker", text: $displayName)
                         .textFieldStyle(.roundedBorder)
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Process Patterns (comma-separated)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                fieldGroup(
+                    label: NSLocalizedString("Process Patterns", comment: ""),
+                    icon: "magnifyingglass",
+                    hint: NSLocalizedString("Comma-separated. Matched against process command names (case-insensitive).", comment: "")
+                ) {
                     TextField("e.g. docker, com.docker", text: $patternsText)
                         .textFieldStyle(.roundedBorder)
-                    Text("Matched against process command names (case-insensitive)")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .font(.system(.body, design: .monospaced))
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Memory Limit")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text(formatMemory(limitMB))
-                            .font(.system(.callout, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                    }
-                    HStack(spacing: 8) {
-                        Slider(
-                            value: $limitMB,
-                            in: Self.minMB...Self.maxMB,
-                            step: Self.stepMB
-                        ) {
-                            EmptyView()
+                fieldGroup(
+                    label: NSLocalizedString("Memory Limit", comment: ""),
+                    icon: "memorychip"
+                ) {
+                    VStack(spacing: 6) {
+                        HStack {
+                            Slider(
+                                value: $limitMB,
+                                in: Self.minMB...Self.maxMB,
+                                step: Self.stepMB
+                            )
+                            Stepper(
+                                "",
+                                value: $limitMB,
+                                in: Self.minMB...Self.maxMB,
+                                step: Self.stepMB
+                            )
+                            .labelsHidden()
+                            .controlSize(.mini)
                         }
-
-                        Stepper(
-                            "",
-                            value: $limitMB,
-                            in: Self.minMB...Self.maxMB,
-                            step: Self.stepMB
-                        )
-                        .labelsHidden()
-                        .frame(width: 36)
+                        HStack {
+                            Spacer()
+                            Text(formatMemory(limitMB))
+                                .font(.system(.callout, design: .monospaced, weight: .semibold))
+                                .monospacedDigit()
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 3)
+                                .background(
+                                    Capsule().fill(.tint.opacity(0.15))
+                                )
+                                .foregroundStyle(.tint)
+                        }
                     }
                 }
             }
-            .padding(16)
+            .padding(18)
 
-            Spacer()
-            Divider()
+            Spacer(minLength: 0)
+            Divider().opacity(0.5)
 
             HStack {
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
+                    .controlSize(.large)
                 Spacer()
                 Button("Add") { addProcess() }
                     .keyboardShortcut(.defaultAction)
+                    .controlSize(.large)
+                    .buttonStyle(.borderedProminent)
                     .disabled(!isValid)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
         }
-        .frame(width: 340, height: 340)
+        .frame(width: 400, height: 420)
+        .background(.regularMaterial)
+    }
+
+    private func fieldGroup<Content: View>(
+        label: String,
+        icon: String,
+        hint: String? = nil,
+        @ViewBuilder _ content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(label, systemImage: icon)
+                .labelStyle(SettingsLabelStyle())
+                .font(.system(.caption, weight: .semibold))
+                .foregroundStyle(.primary)
+            content()
+            if let hint {
+                Text(hint)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
     }
 
     private func addProcess() {

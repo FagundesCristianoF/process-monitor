@@ -13,8 +13,10 @@ final class ProcessMonitorService: ObservableObject {
     @Published var totalMemoryMB: Double = 0
 
     static let historyLength = 60
+    static let autoRestartCooldown: TimeInterval = 300 // 5 min between auto-restarts per process
     private var memoryHistory: [String: [Double]] = [:]
     private var cpuHistory: [String: [Double]] = [:]
+    private var lastAutoRestartAt: [String: Date] = [:]
 
     // CPU sampling state for native libproc-based sampling.
     private var previousCPUTotals: [pid_t: UInt64] = [:]
@@ -466,12 +468,35 @@ final class ProcessMonitorService: ObservableObject {
     }
 
     private func checkMemoryLimits(_ processes: [MonitoredProcess]) {
+        let now = Date()
         for process in processes where process.status == .overLimit {
             notificationService.notifyIfNeeded(
                 processName: process.definition.displayName,
                 memoryMB: process.totalMemoryMB,
                 limitMB: process.memoryLimitMB
             )
+
+            // Auto-restart check
+            guard let autoLimit = configStore.autoRestartLimit(for: process.definition.id),
+                  process.totalMemoryMB > Double(autoLimit),
+                  process.appBundlePath != nil
+            else { continue }
+
+            let last = lastAutoRestartAt[process.definition.id]
+            if let last, now.timeIntervalSince(last) < Self.autoRestartCooldown {
+                continue
+            }
+            lastAutoRestartAt[process.definition.id] = now
+            serviceLog.notice("Auto-restart: \(process.definition.displayName) at \(process.totalMemoryMB)MB exceeds limit \(autoLimit)MB")
+            Telemetry.breadcrumb("auto_restart \(process.definition.id) mem=\(Int(process.totalMemoryMB))MB limit=\(autoLimit)MB", category: "auto_restart")
+            notificationService.notifyAutoRestart(
+                processName: process.definition.displayName,
+                memoryMB: process.totalMemoryMB,
+                limitMB: autoLimit
+            )
+            DispatchQueue.main.async { [weak self] in
+                self?.restartGroup(process)
+            }
         }
     }
 }

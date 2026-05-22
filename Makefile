@@ -25,8 +25,8 @@ bundle: build
 	cp "$(BUILD_DIR_DEBUG)/ProcessMonitor" "$(BUNDLE_NAME)/Contents/MacOS/ProcessMonitor"
 	cp Info.plist "$(BUNDLE_NAME)/Contents/Info.plist"
 	cp -R "$(BUILD_DIR_DEBUG)/$(RESOURCE_BUNDLE)" "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)"
-	xcrun xcstringstool compile --output-directory "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)" "$(XCSTRINGS)"
 	rm -f "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)/Localizable.xcstrings"
+	xcrun xcstringstool compile --output-directory "$(BUNDLE_NAME)/Contents/Resources" "$(XCSTRINGS)"
 	codesign --force --deep --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" "$(BUNDLE_NAME)"
 
 run: bundle
@@ -42,8 +42,8 @@ export: release
 	cp "$(BUILD_DIR_RELEASE)/ProcessMonitor" "$(BUNDLE_NAME)/Contents/MacOS/ProcessMonitor"
 	cp Info.plist "$(BUNDLE_NAME)/Contents/Info.plist"
 	cp -R "$(BUILD_DIR_RELEASE)/$(RESOURCE_BUNDLE)" "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)"
-	xcrun xcstringstool compile --output-directory "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)" "$(XCSTRINGS)"
 	rm -f "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)/Localizable.xcstrings"
+	xcrun xcstringstool compile --output-directory "$(BUNDLE_NAME)/Contents/Resources" "$(XCSTRINGS)"
 	strip "$(BUNDLE_NAME)/Contents/MacOS/ProcessMonitor"
 	codesign --force --deep --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" "$(BUNDLE_NAME)"
 	mkdir -p "$(EXPORT_DIR)"
