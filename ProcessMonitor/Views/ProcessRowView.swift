@@ -32,6 +32,7 @@ struct ProcessRowView: View {
             statusIcon
             nameLabel
             Spacer()
+            sparkline
             memoryLabel
             killButton
         }
@@ -87,10 +88,17 @@ struct ProcessRowView: View {
             if process.status != .notRunning && !process.children.isEmpty {
                 let groupCount = process.childGroups.count
                 let totalCount = process.children.count
-                Text(
-                    "\(totalCount) process\(totalCount == 1 ? "" : "es")"
-                    + " in \(groupCount) group\(groupCount == 1 ? "" : "s")"
-                )
+                let processesLabel = totalCount == 1
+                    ? NSLocalizedString("1 process", comment: "Singular process count")
+                    : String(format: NSLocalizedString("%lld processes", comment: "Plural process count"), totalCount)
+                let groupsLabel = groupCount == 1
+                    ? NSLocalizedString("1 group", comment: "Singular group count")
+                    : String(format: NSLocalizedString("%lld groups", comment: "Plural group count"), groupCount)
+                Text(String(
+                    format: NSLocalizedString("%1$@ in %2$@", comment: "Children summary: <N processes> in <M groups>"),
+                    processesLabel,
+                    groupsLabel
+                ))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             }
@@ -99,17 +107,48 @@ struct ProcessRowView: View {
 
     private var memoryLabel: some View {
         VStack(alignment: .trailing, spacing: 1) {
-            Text(process.formattedMemory)
-                .font(.system(.callout, design: .monospaced))
-                .foregroundStyle(process.status == .overLimit ? .orange : .primary)
+            HStack(spacing: 6) {
+                if process.status != .notRunning {
+                    Text(process.formattedCPU)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+                Text(process.formattedMemory)
+                    .font(.system(.callout, design: .monospaced))
+                    .foregroundStyle(process.status == .overLimit ? .orange : .primary)
+            }
 
             if process.status != .notRunning {
-                Text("\(process.formattedSwap) swap")
+                Text(String(format: NSLocalizedString("%@ swap", comment: "Swap memory label"), process.formattedSwap))
                     .font(.system(.caption2, design: .monospaced))
                     .foregroundStyle(.secondary)
             }
         }
-        .frame(width: 82, alignment: .trailing)
+        .frame(width: 120, alignment: .trailing)
+    }
+
+    @ViewBuilder
+    private var sparkline: some View {
+        if process.status != .notRunning && process.memoryHistory.count >= 2 {
+            let samples = Array(process.memoryHistory.suffix(60))
+            Canvas { ctx, size in
+                guard let maxVal = samples.max(), maxVal > 0 else { return }
+                let stepX = samples.count > 1 ? size.width / CGFloat(samples.count - 1) : 0
+                var path = Path()
+                for (i, v) in samples.enumerated() {
+                    let x = CGFloat(i) * stepX
+                    let norm = CGFloat(v / maxVal)
+                    let y = size.height - (norm * size.height)
+                    if i == 0 {
+                        path.move(to: CGPoint(x: x, y: y))
+                    } else {
+                        path.addLine(to: CGPoint(x: x, y: y))
+                    }
+                }
+                ctx.stroke(path, with: .color(Color.accentColor.opacity(0.7)), lineWidth: 1)
+            }
+            .frame(width: 50, height: 16)
+        }
     }
 
     @ViewBuilder

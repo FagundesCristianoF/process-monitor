@@ -44,11 +44,15 @@ struct ProcessChildGroupRowView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 3))
             }
 
+            Text(group.formattedCPU)
+                .font(.system(.caption2, design: .monospaced))
+                .foregroundStyle(.tertiary)
+
             VStack(alignment: .trailing, spacing: 0) {
                 Text(group.formattedMemory)
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
-                Text("\(group.formattedSwap) sw")
+                Text(String(format: NSLocalizedString("%@ sw", comment: "Swap memory short label"), group.formattedSwap))
                     .font(.system(.caption2, design: .monospaced))
                     .foregroundStyle(.tertiary)
             }
@@ -64,7 +68,13 @@ struct ProcessChildGroupRowView: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .help(confirmingKill ? "Cancel" : group.count > 1 ? "Kill all \(group.name)" : "Kill this process")
+            .help(
+                confirmingKill
+                ? NSLocalizedString("Cancel", comment: "Cancel button")
+                : (group.count > 1
+                    ? String(format: NSLocalizedString("Kill all %@", comment: "Kill all of a given process name"), group.name)
+                    : NSLocalizedString("Kill this process", comment: "Kill a single process"))
+            )
         }
         .padding(.leading, 24)
         .padding(.trailing, 12)
@@ -97,8 +107,8 @@ struct ProcessChildGroupRowView: View {
     private var confirmBar: some View {
         HStack(spacing: 8) {
             Text(group.count > 1
-                 ? "Kill all \(group.count) \(group.name)?"
-                 : "Kill \(group.name) (PID \(group.children.first?.id ?? 0))?")
+                 ? String(format: NSLocalizedString("Kill all %1$lld %2$@?", comment: "Kill all N of NAME confirmation"), group.count, group.name)
+                 : String(format: NSLocalizedString("Kill %1$@ (PID %2$d)?", comment: "Kill child confirmation. %1=command, %2=pid"), group.name, group.children.first?.id ?? 0))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)

@@ -4,10 +4,17 @@ import PackageDescription
 let package = Package(
     name: "ProcessMonitor",
     platforms: [.macOS(.v13)],
+    dependencies: [
+        .package(url: "https://github.com/getsentry/sentry-cocoa", from: "8.36.0")
+    ],
     targets: [
         .executableTarget(
             name: "ProcessMonitor",
-            path: "ProcessMonitor"
+            dependencies: [
+                .product(name: "Sentry", package: "sentry-cocoa")
+            ],
+            path: "ProcessMonitor",
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "ProcessMonitorTests",

@@ -1,6 +1,9 @@
 import Foundation
 import Combine
 import Darwin
+import os
+
+private let serviceLog = Logger(subsystem: "com.cristianofagundes.ProcessMonitor", category: "monitor")
 
 final class ProcessMonitorService: ObservableObject {
     typealias ProcessEntriesProvider = () -> [RawProcessEntry]
@@ -9,56 +12,122 @@ final class ProcessMonitorService: ObservableObject {
     @Published var processes: [MonitoredProcess] = []
     @Published var totalMemoryMB: Double = 0
 
+    static let historyLength = 60
+    private var memoryHistory: [String: [Double]] = [:]
+    private var cpuHistory: [String: [Double]] = [:]
+
+    // CPU sampling state for native libproc-based sampling.
+    private var previousCPUTotals: [pid_t: UInt64] = [:]
+    private var previousSampleTime: TimeInterval = 0
+
     private var timer: AnyCancellable?
+    private var pollTask: Task<Void, Never>?
+    private var configCancellables = Set<AnyCancellable>()
     private let configStore: ProcessConfigStore
     private let notificationService: NotificationService
-    private let pollInterval: TimeInterval
+    private var pollInterval: TimeInterval
     private let processEntriesProvider: ProcessEntriesProvider?
-    private let pollPublisherFactory: PollPublisherFactory
+    private let pollPublisherFactory: PollPublisherFactory?
 
     var isPolling: Bool {
-        timer != nil
+        timer != nil || pollTask != nil
     }
 
     init(
         configStore: ProcessConfigStore = ProcessConfigStore(),
         notificationService: NotificationService = NotificationService(),
-        pollInterval: TimeInterval = 5,
+        pollInterval: TimeInterval? = nil,
         processEntriesProvider: ProcessEntriesProvider? = nil,
-        pollPublisherFactory: @escaping PollPublisherFactory = {
-            Timer.publish(every: $0, on: .main, in: .common)
-        }
+        pollPublisherFactory: PollPublisherFactory? = nil
     ) {
         self.configStore = configStore
         self.notificationService = notificationService
-        self.pollInterval = pollInterval
+        self.pollInterval = pollInterval ?? configStore.pollIntervalSeconds
         self.processEntriesProvider = processEntriesProvider
         self.pollPublisherFactory = pollPublisherFactory
+
+        configStore.$pollIntervalSeconds
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] interval in
+                self?.applyPollInterval(interval)
+            }
+            .store(in: &configCancellables)
+
+        configStore.$isPaused
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] paused in
+                if paused { self?.stopPolling() } else { self?.startPolling() }
+            }
+            .store(in: &configCancellables)
     }
 
     func startPolling() {
-        guard timer == nil else { return }
-        refresh()
-        timer = pollPublisherFactory(pollInterval)
-            .autoconnect()
-            .sink { [weak self] _ in self?.refresh() }
+        guard !isPolling else { return }
+        guard !configStore.isPaused else { return }
+        serviceLog.info("Polling started, interval=\(self.pollInterval)s")
+
+        if let factory = pollPublisherFactory {
+            // Combine-based path retained for tests/injection.
+            refresh()
+            timer = factory(pollInterval)
+                .autoconnect()
+                .sink { [weak self] _ in self?.refresh() }
+            return
+        }
+
+        let interval = pollInterval
+        pollTask = Task.detached(priority: .utility) { [weak self] in
+            while !Task.isCancelled {
+                await self?.refreshAsync()
+                let ns = UInt64(max(0.1, interval) * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: ns)
+            }
+        }
     }
 
     func stopPolling() {
         timer?.cancel()
         timer = nil
+        pollTask?.cancel()
+        pollTask = nil
+        serviceLog.info("Polling stopped")
+    }
+
+    private func applyPollInterval(_ interval: TimeInterval) {
+        pollInterval = interval
+        guard isPolling else { return }
+        stopPolling()
+        startPolling()
     }
 
     func refresh() {
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self else { return }
-            let rawEntries = self.processEntriesProvider?() ?? self.fetchProcessEntries()
-            let grouped = self.buildGroupedProcesses(from: rawEntries)
-            DispatchQueue.main.async {
-                self.processes = grouped
-                self.totalMemoryMB = grouped.reduce(0) { $0 + $1.totalMemoryMB }
-                self.checkMemoryLimits(grouped)
+        if pollPublisherFactory != nil {
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                guard let self else { return }
+                let rawEntries = self.processEntriesProvider?() ?? self.fetchProcessEntries()
+                let grouped = self.buildGroupedProcesses(from: rawEntries)
+                DispatchQueue.main.async {
+                    self.processes = grouped
+                    self.totalMemoryMB = grouped.reduce(0) { $0 + $1.totalMemoryMB }
+                    self.checkMemoryLimits(grouped)
+                }
             }
+            return
+        }
+        Task.detached(priority: .utility) { [weak self] in
+            await self?.refreshAsync()
+        }
+    }
+
+    private func refreshAsync() async {
+        let rawEntries = self.processEntriesProvider?() ?? self.fetchProcessEntries()
+        let grouped = self.buildGroupedProcesses(from: rawEntries)
+        await MainActor.run {
+            self.processes = grouped
+            self.totalMemoryMB = grouped.reduce(0) { $0 + $1.totalMemoryMB }
+            self.checkMemoryLimits(grouped)
         }
     }
 
@@ -67,6 +136,8 @@ final class ProcessMonitorService: ObservableObject {
     }
 
     func killProcesses(pids: [pid_t]) {
+        serviceLog.notice("Killing \(pids.count) pids")
+        Telemetry.breadcrumb("kill_processes count=\(pids.count)", category: "action")
         for pid in pids {
             kill(pid, SIGTERM)
         }
@@ -129,47 +200,91 @@ final class ProcessMonitorService: ObservableObject {
     // MARK: - Private
 
     private func fetchProcessEntries() -> [RawProcessEntry] {
-        let task = Process()
-        let pipe = Pipe()
-        task.executableURL = URL(fileURLWithPath: "/bin/ps")
-        task.arguments = ["-eo", "pid,ppid,rss,comm"]
-        task.standardOutput = pipe
-        task.standardError = FileHandle.nullDevice
+        // 1. Enumerate PIDs via proc_listpids.
+        let initialCount = proc_listpids(UInt32(PROC_ALL_PIDS), 0, nil, 0)
+        guard initialCount > 0 else { return [] }
+        // Add some headroom in case new processes appeared between calls.
+        let capacity = Int(initialCount) / MemoryLayout<pid_t>.stride + 64
+        var pids = [pid_t](repeating: 0, count: capacity)
+        let byteCount = Int32(capacity * MemoryLayout<pid_t>.stride)
+        let written = pids.withUnsafeMutableBufferPointer { buf -> Int32 in
+            proc_listpids(UInt32(PROC_ALL_PIDS), 0, buf.baseAddress, byteCount)
+        }
+        guard written > 0 else { return [] }
+        let actualCount = Int(written) / MemoryLayout<pid_t>.stride
 
-        do {
-            try task.run()
-        } catch {
-            return []
+        // 2. Sample wallclock for CPU delta.
+        let now = ProcessInfo.processInfo.systemUptime
+        let wallDelta = previousSampleTime > 0 ? (now - previousSampleTime) : 0
+        let wallDeltaNS = wallDelta * 1_000_000_000
+        var newCPUTotals: [pid_t: UInt64] = [:]
+        newCPUTotals.reserveCapacity(actualCount)
+
+        var entries: [RawProcessEntry] = []
+        entries.reserveCapacity(actualCount)
+
+        let pathBufSize = Int(MAXPATHLEN)
+        var pathBuf = [CChar](repeating: 0, count: pathBufSize)
+
+        for i in 0..<actualCount {
+            let pid = pids[i]
+            if pid <= 0 { continue }
+
+            // BSD info: ppid + comm.
+            var bsd = proc_bsdinfo()
+            let bsdSize = Int32(MemoryLayout<proc_bsdinfo>.size)
+            let bsdResult = withUnsafeMutablePointer(to: &bsd) { ptr -> Int32 in
+                proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, ptr, bsdSize)
+            }
+            guard bsdResult == bsdSize else { continue }
+
+            let ppid = pid_t(bsd.pbi_ppid)
+
+            // Task info: CPU times.
+            var task = proc_taskinfo()
+            let taskSize = Int32(MemoryLayout<proc_taskinfo>.size)
+            let taskResult = withUnsafeMutablePointer(to: &task) { ptr -> Int32 in
+                proc_pidinfo(pid, PROC_PIDTASKINFO, 0, ptr, taskSize)
+            }
+            var cpuPercent: Double = 0
+            if taskResult == taskSize {
+                let total = task.pti_total_user &+ task.pti_total_system
+                newCPUTotals[pid] = total
+                if wallDeltaNS > 0, let prev = previousCPUTotals[pid], total >= prev {
+                    let deltaNS = Double(total - prev)
+                    cpuPercent = (deltaNS / wallDeltaNS) * 100.0
+                }
+            }
+
+            // Executable path.
+            var command = ""
+            let pathLen = pathBuf.withUnsafeMutableBufferPointer { buf -> Int32 in
+                proc_pidpath(pid, buf.baseAddress, UInt32(pathBufSize))
+            }
+            if pathLen > 0 {
+                command = String(cString: pathBuf)
+            } else {
+                var comm = bsd.pbi_comm
+                let commSize = MemoryLayout.size(ofValue: comm)
+                command = withUnsafePointer(to: &comm) { ptr -> String in
+                    ptr.withMemoryRebound(to: CChar.self, capacity: commSize) {
+                        String(cString: $0)
+                    }
+                }
+            }
+
+            entries.append(RawProcessEntry(
+                pid: pid,
+                ppid: ppid,
+                rssKB: 0,
+                cpuPercent: cpuPercent,
+                command: command
+            ))
         }
 
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        task.waitUntilExit()
-
-        guard let output = String(data: data, encoding: .utf8) else { return [] }
-
-        return output
-            .components(separatedBy: "\n")
-            .dropFirst() // header
-            .compactMap { parseLine($0) }
-    }
-
-    private func parseLine(_ line: String) -> RawProcessEntry? {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return nil }
-
-        let parts = trimmed.split(
-            separator: " ",
-            maxSplits: 3,
-            omittingEmptySubsequences: true
-        )
-        guard parts.count >= 4,
-              let pid = pid_t(parts[0]),
-              let ppid = pid_t(parts[1]),
-              let rss = Int(parts[2])
-        else { return nil }
-
-        let command = String(parts[3])
-        return RawProcessEntry(pid: pid, ppid: ppid, rssKB: rss, command: command)
+        previousCPUTotals = newCPUTotals
+        previousSampleTime = now
+        return entries
     }
 
     private func buildGroupedProcesses(from entries: [RawProcessEntry]) -> [MonitoredProcess] {
@@ -224,6 +339,7 @@ final class ProcessMonitorService: ObservableObject {
         return monitoredDefinitions.map { def in
             let limit = configStore.limit(for: def.id)
             guard let roots = rootPidsPerDef[def.id], !roots.isEmpty else {
+                pushHistory(memorySample: 0, cpuSample: 0, for: def.id)
                 return MonitoredProcess(
                     id: def.id,
                     definition: def,
@@ -231,6 +347,9 @@ final class ProcessMonitorService: ObservableObject {
                     rootPids: [],
                     totalMemoryMB: 0,
                     totalSwapMB: 0,
+                    totalCPU: 0,
+                    memoryHistory: memoryHistory[def.id] ?? [],
+                    cpuHistory: cpuHistory[def.id] ?? [],
                     children: [],
                     memoryLimitMB: limit,
                     appBundlePath: nil
@@ -248,19 +367,23 @@ final class ProcessMonitorService: ObservableObject {
 
             var rootMemMB = 0.0
             var rootSwapMB = 0.0
+            var rootCPU = 0.0
             for entry in rootEntries {
                 let usage = processMemoryUsage(for: entry.pid, fallbackRssKB: entry.rssKB)
                 rootMemMB += usage.footprintMB
                 rootSwapMB += usage.swapMB
+                rootCPU += entry.cpuPercent
             }
 
             var childMemMB = 0.0
             var childSwapMB = 0.0
+            var childCPU = 0.0
             var childItems: [ProcessChild] = []
             for entry in uniqueDescendants {
                 let usage = processMemoryUsage(for: entry.pid, fallbackRssKB: entry.rssKB)
                 childMemMB += usage.footprintMB
                 childSwapMB += usage.swapMB
+                childCPU += entry.cpuPercent
                 if usage.footprintMB > 1 {
                     let baseName = URL(fileURLWithPath: entry.command).lastPathComponent
                     childItems.append(ProcessChild(
@@ -268,7 +391,8 @@ final class ProcessMonitorService: ObservableObject {
                         parentPid: entry.ppid,
                         command: baseName,
                         memoryMB: usage.footprintMB,
-                        swapMB: usage.swapMB
+                        swapMB: usage.swapMB,
+                        cpuPercent: entry.cpuPercent
                     ))
                 }
             }
@@ -276,7 +400,10 @@ final class ProcessMonitorService: ObservableObject {
 
             let totalMB = rootMemMB + childMemMB
             let totalSwapMB = rootSwapMB + childSwapMB
+            let totalCPU = rootCPU + childCPU
             let status: ProcessStatus = totalMB > Double(limit) ? .overLimit : .running
+
+            pushHistory(memorySample: totalMB, cpuSample: totalCPU, for: def.id)
 
             return MonitoredProcess(
                 id: def.id,
@@ -285,11 +412,26 @@ final class ProcessMonitorService: ObservableObject {
                 rootPids: roots,
                 totalMemoryMB: totalMB,
                 totalSwapMB: totalSwapMB,
+                totalCPU: totalCPU,
+                memoryHistory: memoryHistory[def.id] ?? [],
+                cpuHistory: cpuHistory[def.id] ?? [],
                 children: childItems,
                 memoryLimitMB: limit,
                 appBundlePath: bundlePath
             )
         }
+    }
+
+    private func pushHistory(memorySample: Double, cpuSample: Double, for id: String) {
+        var mem = memoryHistory[id] ?? []
+        mem.append(memorySample)
+        if mem.count > Self.historyLength { mem.removeFirst(mem.count - Self.historyLength) }
+        memoryHistory[id] = mem
+
+        var cpu = cpuHistory[id] ?? []
+        cpu.append(cpuSample)
+        if cpu.count > Self.historyLength { cpu.removeFirst(cpu.count - Self.historyLength) }
+        cpuHistory[id] = cpu
     }
 
     struct MemoryUsage {

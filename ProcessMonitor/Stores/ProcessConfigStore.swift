@@ -6,46 +6,115 @@ final class ProcessConfigStore: ObservableObject {
     private static let limitsPrefix = "memoryLimit_"
     private static let definitionsKey = "monitoredDefinitions"
     private static let patternVersionKey = "patternSchemaVersion"
+    private static let pollIntervalKey = "pollIntervalSeconds"
+    private static let isPausedKey = "monitoringPaused"
     private static let currentPatternVersion = 2
+    static let defaultPollInterval: Double = 5
+    static let minPollInterval: Double = 1
+    static let maxPollInterval: Double = 60
 
-    @Published var definitions: [ProcessDefinition] = []
-    @Published var limits: [String: Int] = [:]
+    @Published var definitions: [ProcessDefinition] = [] {
+        didSet { if isInitialized { persist() } }
+    }
+    @Published var limits: [String: Int] = [:] {
+        didSet { if isInitialized { persist() } }
+    }
+    @Published var pollIntervalSeconds: Double {
+        didSet {
+            let clamped = min(max(pollIntervalSeconds, Self.minPollInterval), Self.maxPollInterval)
+            if clamped != pollIntervalSeconds {
+                pollIntervalSeconds = clamped
+                return
+            }
+            if isInitialized { persist() }
+        }
+    }
+    @Published var isPaused: Bool {
+        didSet { if isInitialized { persist() } }
+    }
+    @Published var telemetryEnabled: Bool {
+        didSet { if isInitialized { persist() } }
+    }
+
+    private var patternSchemaVersion: Int = 0
+    private var isInitialized = false
+    private let configFileURL: URL
+
+    private struct PersistedConfig: Codable {
+        var definitions: [ProcessDefinition]
+        var limits: [String: Int]
+        var pollIntervalSeconds: Double
+        var isPaused: Bool
+        var patternSchemaVersion: Int
+        var telemetryEnabled: Bool?
+    }
 
     init() {
-        definitions = Self.loadDefinitions(from: defaults)
-        migrateBuiltInPatterns()
-        for def in definitions {
-            let key = Self.limitsPrefix + def.id
-            let stored = defaults.integer(forKey: key)
-            limits[def.id] = stored > 0 ? stored : def.defaultLimitMB
+        self.configFileURL = Self.defaultConfigFileURL()
+
+        if let loaded = Self.loadFromDisk(at: configFileURL) {
+            self.pollIntervalSeconds = loaded.pollIntervalSeconds > 0
+                ? loaded.pollIntervalSeconds
+                : Self.defaultPollInterval
+            self.isPaused = loaded.isPaused
+            self.telemetryEnabled = loaded.telemetryEnabled ?? true
+            self.definitions = loaded.definitions.isEmpty
+                ? ProcessDefinition.builtInDefaults
+                : loaded.definitions
+            self.limits = loaded.limits
+            self.patternSchemaVersion = loaded.patternSchemaVersion
+        } else {
+            // Migrate from UserDefaults (one-time).
+            let storedInterval = defaults.double(forKey: Self.pollIntervalKey)
+            self.pollIntervalSeconds = storedInterval > 0 ? storedInterval : Self.defaultPollInterval
+            self.isPaused = defaults.bool(forKey: Self.isPausedKey)
+            self.telemetryEnabled = true
+            self.definitions = Self.loadDefinitionsFromDefaults(defaults)
+            var loadedLimits: [String: Int] = [:]
+            for def in definitions {
+                let key = Self.limitsPrefix + def.id
+                let stored = defaults.integer(forKey: key)
+                loadedLimits[def.id] = stored > 0 ? stored : def.defaultLimitMB
+            }
+            self.limits = loadedLimits
+            self.patternSchemaVersion = defaults.integer(forKey: Self.patternVersionKey)
         }
+
+        // Ensure limits cover all definitions.
+        for def in definitions where limits[def.id] == nil {
+            limits[def.id] = def.defaultLimitMB
+        }
+
+        migrateBuiltInPatterns()
+
+        isInitialized = true
+        // Write out an authoritative config file (creates the file on first run).
+        persist()
     }
 
     /// One-time migration: sync patterns for built-in definitions so that
     /// persisted stores pick up improved matching (e.g. "Cursor" → "Cursor.app").
     private func migrateBuiltInPatterns() {
-        let version = defaults.integer(forKey: Self.patternVersionKey)
-        guard version < Self.currentPatternVersion else { return }
+        guard patternSchemaVersion < Self.currentPatternVersion else { return }
 
         let builtInMap = Dictionary(
             uniqueKeysWithValues: ProcessDefinition.builtInDefaults.map { ($0.id, $0) }
         )
-        var changed = false
         for (i, def) in definitions.enumerated() {
             if let builtIn = builtInMap[def.id], def.patterns != builtIn.patterns {
                 definitions[i].patterns = builtIn.patterns
-                changed = true
             }
         }
 
         let existingIds = Set(definitions.map(\.id))
         for builtIn in ProcessDefinition.builtInDefaults where !existingIds.contains(builtIn.id) {
             definitions.append(builtIn)
-            changed = true
+            if limits[builtIn.id] == nil {
+                limits[builtIn.id] = builtIn.defaultLimitMB
+            }
         }
 
-        if changed { persistDefinitions() }
-        defaults.set(Self.currentPatternVersion, forKey: Self.patternVersionKey)
+        patternSchemaVersion = Self.currentPatternVersion
     }
 
     // MARK: - Limits
@@ -56,7 +125,6 @@ final class ProcessConfigStore: ObservableObject {
 
     func setLimit(_ mb: Int, for definitionId: String) {
         limits[definitionId] = mb
-        defaults.set(mb, forKey: Self.limitsPrefix + definitionId)
     }
 
     // MARK: - Definitions
@@ -65,39 +133,78 @@ final class ProcessConfigStore: ObservableObject {
         guard !definitions.contains(where: { $0.id == definition.id }) else { return }
         definitions.append(definition)
         limits[definition.id] = definition.defaultLimitMB
-        defaults.set(definition.defaultLimitMB, forKey: Self.limitsPrefix + definition.id)
-        persistDefinitions()
     }
 
     func removeDefinition(id: String) {
         definitions.removeAll { $0.id == id }
         limits.removeValue(forKey: id)
-        defaults.removeObject(forKey: Self.limitsPrefix + id)
-        persistDefinitions()
     }
 
     func updateDefinition(_ definition: ProcessDefinition) {
         guard let idx = definitions.firstIndex(where: { $0.id == definition.id }) else { return }
         definitions[idx] = definition
-        persistDefinitions()
     }
 
     func resetToDefaults() {
         definitions = ProcessDefinition.builtInDefaults
-        persistDefinitions()
+        var newLimits: [String: Int] = [:]
         for def in definitions {
-            setLimit(def.defaultLimitMB, for: def.id)
+            newLimits[def.id] = def.defaultLimitMB
         }
+        limits = newLimits
     }
 
     // MARK: - Persistence
 
-    private func persistDefinitions() {
-        guard let data = try? JSONEncoder().encode(definitions) else { return }
-        defaults.set(data, forKey: Self.definitionsKey)
+    private func persist() {
+        let payload = PersistedConfig(
+            definitions: definitions,
+            limits: limits,
+            pollIntervalSeconds: pollIntervalSeconds,
+            isPaused: isPaused,
+            patternSchemaVersion: patternSchemaVersion,
+            telemetryEnabled: telemetryEnabled
+        )
+        do {
+            let dir = configFileURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(payload)
+            try data.write(to: configFileURL, options: .atomic)
+        } catch {
+            // Persistence failures are non-fatal; in-memory state remains correct.
+        }
     }
 
-    private static func loadDefinitions(from defaults: UserDefaults) -> [ProcessDefinition] {
+    private static func loadFromDisk(at url: URL) -> PersistedConfig? {
+        guard FileManager.default.fileExists(atPath: url.path),
+              let data = try? Data(contentsOf: url),
+              let decoded = try? JSONDecoder().decode(PersistedConfig.self, from: data)
+        else { return nil }
+        return decoded
+    }
+
+    private static func defaultConfigFileURL() -> URL {
+        let fm = FileManager.default
+        let base: URL
+        if let appSupport = try? fm.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        ) {
+            base = appSupport
+        } else {
+            base = URL(fileURLWithPath: NSHomeDirectory())
+                .appendingPathComponent("Library/Application Support")
+        }
+        return base
+            .appendingPathComponent("ProcessMonitor", isDirectory: true)
+            .appendingPathComponent("config.json")
+    }
+
+    private static func loadDefinitionsFromDefaults(_ defaults: UserDefaults) -> [ProcessDefinition] {
         guard let data = defaults.data(forKey: definitionsKey),
               let stored = try? JSONDecoder().decode([ProcessDefinition].self, from: data),
               !stored.isEmpty

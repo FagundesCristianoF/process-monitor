@@ -30,7 +30,7 @@ final class SettingsWindowController {
             backing: .buffered,
             defer: false
         )
-        newWindow.title = "Process Monitor Settings"
+        newWindow.title = NSLocalizedString("Process Monitor Settings", comment: "Settings window title")
         newWindow.contentView = hostingView
         newWindow.center()
         newWindow.isReleasedWhenClosed = false

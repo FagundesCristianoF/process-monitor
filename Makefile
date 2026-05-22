@@ -3,9 +3,11 @@
 APP_NAME = Process Monitor
 BUNDLE_NAME = ProcessMonitor.app
 BUILD_DIR_DEBUG = .build/arm64-apple-macosx/debug
-BUILD_DIR_RELEASE = .build/arm64-apple-macosx/release
+BUILD_DIR_RELEASE = .build/apple/Products/Release
 EXPORT_DIR = export
 TEAM_ID = VP83767PVX
+XCSTRINGS = ProcessMonitor/Resources/Localizable.xcstrings
+RESOURCE_BUNDLE = ProcessMonitor_ProcessMonitor.bundle
 
 # Keychain profile name for notarytool (created via: xcrun notarytool store-credentials)
 NOTARY_PROFILE ?= ProcessMonitor
@@ -19,21 +21,29 @@ build:
 bundle: build
 	rm -rf "$(BUNDLE_NAME)"
 	mkdir -p "$(BUNDLE_NAME)/Contents/MacOS"
+	mkdir -p "$(BUNDLE_NAME)/Contents/Resources"
 	cp "$(BUILD_DIR_DEBUG)/ProcessMonitor" "$(BUNDLE_NAME)/Contents/MacOS/ProcessMonitor"
 	cp Info.plist "$(BUNDLE_NAME)/Contents/Info.plist"
+	cp -R "$(BUILD_DIR_DEBUG)/$(RESOURCE_BUNDLE)" "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)"
+	xcrun xcstringstool compile --output-directory "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)" "$(XCSTRINGS)"
+	rm -f "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)/Localizable.xcstrings"
 	codesign --force --deep --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" "$(BUNDLE_NAME)"
 
 run: bundle
 	open "$(BUNDLE_NAME)"
 
 release:
-	swift build -c release
+	swift build -c release --arch arm64 --arch x86_64
 
 export: release
 	rm -rf "$(EXPORT_DIR)" "$(BUNDLE_NAME)"
 	mkdir -p "$(BUNDLE_NAME)/Contents/MacOS"
+	mkdir -p "$(BUNDLE_NAME)/Contents/Resources"
 	cp "$(BUILD_DIR_RELEASE)/ProcessMonitor" "$(BUNDLE_NAME)/Contents/MacOS/ProcessMonitor"
 	cp Info.plist "$(BUNDLE_NAME)/Contents/Info.plist"
+	cp -R "$(BUILD_DIR_RELEASE)/$(RESOURCE_BUNDLE)" "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)"
+	xcrun xcstringstool compile --output-directory "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)" "$(XCSTRINGS)"
+	rm -f "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)/Localizable.xcstrings"
 	strip "$(BUNDLE_NAME)/Contents/MacOS/ProcessMonitor"
 	codesign --force --deep --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" "$(BUNDLE_NAME)"
 	mkdir -p "$(EXPORT_DIR)"

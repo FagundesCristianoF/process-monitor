@@ -26,6 +26,8 @@ struct ProcessMonitorApp: App {
 
     init() {
         let config = ProcessConfigStore()
+        Telemetry.start(enabled: config.telemetryEnabled)
+        Telemetry.breadcrumb("App launched", category: "lifecycle")
         let launchAtLogin = LaunchAtLoginStore()
         let notifications = NotificationService()
         let monitor = ProcessMonitorService(
@@ -51,6 +53,9 @@ struct ProcessMonitorApp: App {
                 launchAtLoginStore: launchAtLoginStore
             )
             .frame(width: 420, height: 520)
+            .onChange(of: configStore.telemetryEnabled) { enabled in
+                Telemetry.setEnabled(enabled)
+            }
         } label: {
             MenuBarIconLabel(monitorService: monitorService)
         }

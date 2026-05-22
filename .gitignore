@@ -5,3 +5,23 @@
 .swiftpm-cache/
 ProcessMonitor.app/
 export/
+
+# Build outputs
+release/
+*.aab
+*.apk
+*.ipa
+
+# Logs
+log/
+logs/
+*.log
+
+# Next.js
+.next/cache/
+
+# Pods
+iosApp/Pods/
+
+# ESP
+.esphome/build/

@@ -81,6 +81,31 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            HStack(spacing: 8) {
+                Text("Refresh every")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Slider(
+                    value: $configStore.pollIntervalSeconds,
+                    in: ProcessConfigStore.minPollInterval...ProcessConfigStore.maxPollInterval,
+                    step: 1
+                )
+                Text("\(Int(configStore.pollIntervalSeconds))s")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 32, alignment: .trailing)
+            }
+
+            Toggle(
+                "Send crash reports & diagnostics",
+                isOn: $configStore.telemetryEnabled
+            )
+            .toggleStyle(.switch)
+
+            Text("Anonymous crash/error reports help fix bugs. Process names are stripped before sending.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
             HStack {
                 Button("Reset to Defaults") {
                     configStore.resetToDefaults()
@@ -133,7 +158,7 @@ private struct DefinitionRow: View {
                 .buttonStyle(.plain)
                 .help("Remove from monitoring")
                 .alert(
-                    "Remove \(definition.displayName)?",
+                    String(format: NSLocalizedString("Remove %@?", comment: "Remove process confirmation title"), definition.displayName),
                     isPresented: $showConfirmRemove,
                     actions: {
                         Button("Cancel", role: .cancel) {}

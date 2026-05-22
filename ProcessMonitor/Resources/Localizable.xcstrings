@@ -1,0 +1,566 @@
+{
+  "sourceLanguage" : "en",
+  "version" : "1.0",
+  "strings" : {
+    "%1$@ in %2$@" : {
+      "comment" : "Children summary: <N processes> in <M groups>",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ in %2$@" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ em %2$@" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ en %2$@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ dans %2$@" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ in %2$@" } }
+      }
+    },
+    "%1$@ is using %2$@ (limit: %3$@). Consider restarting it." : {
+      "comment" : "Notification body",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ is using %2$@ (limit: %3$@). Consider restarting it." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ está usando %2$@ (limite: %3$@). Considere reiniciá-lo." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ está usando %2$@ (límite: %3$@). Considera reiniciarlo." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ utilise %2$@ (limite : %3$@). Envisagez de le redémarrer." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ verwendet %2$@ (Grenze: %3$@). Erwägen Sie einen Neustart." } }
+      }
+    },
+    "%@ sw" : {
+      "comment" : "Swap memory short label",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ sw" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "%@ sw" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%@ sw" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@ sw" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ sw" } }
+      }
+    },
+    "%@ swap" : {
+      "comment" : "Swap memory label",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ swap" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "%@ swap" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%@ swap" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@ swap" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ Swap" } }
+      }
+    },
+    "%lld groups" : {
+      "comment" : "Plural group count",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%lld groups" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "%lld grupos" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%lld grupos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%lld groupes" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%lld Gruppen" } }
+      }
+    },
+    "%lld processes" : {
+      "comment" : "Plural process count",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%lld processes" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "%lld processos" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%lld procesos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%lld processus" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%lld Prozesse" } }
+      }
+    },
+    "1 group" : {
+      "comment" : "Singular group count",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "1 group" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "1 grupo" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "1 grupo" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "1 groupe" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "1 Gruppe" } }
+      }
+    },
+    "1 process" : {
+      "comment" : "Singular process count",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "1 process" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "1 processo" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "1 proceso" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "1 processus" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "1 Prozess" } }
+      }
+    },
+    "Active" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Active" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Ativos" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Activos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Actifs" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktiv" } }
+      }
+    },
+    "Add" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Adicionar" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Añadir" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ajouter" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hinzufügen" } }
+      }
+    },
+    "Add Process" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add Process" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Adicionar Processo" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Añadir Proceso" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ajouter un Processus" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Prozess hinzufügen" } }
+      }
+    },
+    "Add a process to monitor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add a process to monitor" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Adicionar um processo para monitorar" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Añadir un proceso para monitorizar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ajouter un processus à surveiller" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Einen zu überwachenden Prozess hinzufügen" } }
+      }
+    },
+    "Added" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Added" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Adicionados" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Añadidos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ajoutés" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Hinzugefügt" } }
+      }
+    },
+    "Anonymous crash/error reports help fix bugs. Process names are stripped before sending." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Anonymous crash/error reports help fix bugs. Process names are stripped before sending." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Relatórios anônimos de falhas ajudam a corrigir bugs. Nomes de processos são removidos antes do envio." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Los informes anónimos de errores ayudan a corregir bugs. Los nombres de procesos se eliminan antes del envío." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les rapports d'erreurs anonymes aident à corriger les bugs. Les noms de processus sont supprimés avant l'envoi." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Anonyme Absturzberichte helfen, Fehler zu beheben. Prozessnamen werden vor dem Senden entfernt." } }
+      }
+    },
+    "Approve Process Monitor in System Settings > General > Login Items." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Approve Process Monitor in System Settings > General > Login Items." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Aprove o Process Monitor em Ajustes do Sistema > Geral > Itens de Início de Sessão." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Aprueba Process Monitor en Ajustes del Sistema > General > Ítems de inicio de sesión." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Approuvez Process Monitor dans Réglages Système > Général > Ouverture." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Genehmigen Sie Process Monitor in Systemeinstellungen > Allgemein > Anmeldeobjekte." } }
+      }
+    },
+    "CPU" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "CPU" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "CPU" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "CPU" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Processeur" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "CPU" } }
+      }
+    },
+    "Cancel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abbrechen" } }
+      }
+    },
+    "Display Name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Display Name" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Nome de Exibição" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Nombre Visible" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nom Affiché" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Anzeigename" } }
+      }
+    },
+    "Enable launch at login to start monitoring automatically." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Enable launch at login to start monitoring automatically." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Ative iniciar ao fazer login para começar a monitorar automaticamente." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Activa iniciar al iniciar sesión para comenzar a monitorizar automáticamente." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Activez le lancement à la connexion pour démarrer la surveillance automatiquement." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktivieren Sie 'Beim Anmelden starten', um die Überwachung automatisch zu beginnen." } }
+      }
+    },
+    "Kill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Kill" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Encerrar" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Terminar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tuer" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Beenden" } }
+      }
+    },
+    "Kill %1$@ (PID %2$d)?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Kill %1$@ (PID %2$d)?" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Encerrar %1$@ (PID %2$d)?" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Terminar %1$@ (PID %2$d)?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tuer %1$@ (PID %2$d) ?" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ (PID %2$d) beenden?" } }
+      }
+    },
+    "Kill All" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Kill All" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Encerrar Todos" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Terminar Todos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout Tuer" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle beenden" } }
+      }
+    },
+    "Kill all %1$lld %2$@?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Kill all %1$lld %2$@?" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Encerrar todos os %1$lld %2$@?" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Terminar todos los %1$lld %2$@?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tuer tous les %1$lld %2$@ ?" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle %1$lld %2$@ beenden?" } }
+      }
+    },
+    "Kill all %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Kill all %@" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Encerrar todos os %@" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Terminar todos los %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tuer tous les %@" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle %@ beenden" } }
+      }
+    },
+    "Kill this process" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Kill this process" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Encerrar este processo" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Terminar este proceso" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tuer ce processus" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Diesen Prozess beenden" } }
+      }
+    },
+    "Launch at login" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Launch at login" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Iniciar ao fazer login" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Iniciar al iniciar sesión" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Lancer à la connexion" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Beim Anmelden starten" } }
+      }
+    },
+    "Launch at login is unavailable right now." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Launch at login is unavailable right now." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Iniciar ao fazer login não está disponível no momento." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Iniciar al iniciar sesión no está disponible ahora." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le lancement à la connexion n'est pas disponible pour le moment." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Beim Anmelden starten ist derzeit nicht verfügbar." } }
+      }
+    },
+    "Matched against process command names (case-insensitive)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Matched against process command names (case-insensitive)" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Comparado com nomes de comandos de processo (sem distinção de maiúsculas)" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Comparado con nombres de comando de proceso (sin distinguir mayúsculas)" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Comparé aux noms de commandes de processus (insensible à la casse)" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wird mit Prozessbefehlsnamen verglichen (Groß-/Kleinschreibung egal)" } }
+      }
+    },
+    "Memory" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Memory" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Memória" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Memoria" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mémoire" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Speicher" } }
+      }
+    },
+    "Memory Limit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Memory Limit" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Limite de Memória" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Límite de Memoria" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Limite de Mémoire" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Speichergrenze" } }
+      }
+    },
+    "Memory Warning" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Memory Warning" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Aviso de Memória" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Aviso de Memoria" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Avertissement Mémoire" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Speicher-Warnung" } }
+      }
+    },
+    "Monitored Processes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Monitored Processes" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Processos Monitorados" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Procesos Monitorizados" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Processus Surveillés" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Überwachte Prozesse" } }
+      }
+    },
+    "No warnings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No warnings" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sem avisos" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sin advertencias" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun avertissement" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Warnungen" } }
+      }
+    },
+    "PID %d" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "PID %d" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "PID %d" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "PID %d" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "PID %d" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "PID %d" } }
+      }
+    },
+    "Pause monitoring" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pause monitoring" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Pausar monitoramento" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pausar monitorización" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mettre en pause" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Überwachung pausieren" } }
+      }
+    },
+    "Process Monitor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Process Monitor" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Monitor de Processos" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Monitor de Procesos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Moniteur de processus" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Prozessmonitor" } }
+      }
+    },
+    "Process Monitor Settings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Process Monitor Settings" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Configurações do Monitor de Processos" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Configuración del Monitor de Procesos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réglages du Moniteur de processus" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Prozessmonitor-Einstellungen" } }
+      }
+    },
+    "Process Monitor will launch when you log in." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Process Monitor will launch when you log in." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Monitor de Processos iniciará quando você fizer login." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Monitor de Procesos se iniciará al iniciar sesión." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le Moniteur de processus se lancera à votre connexion." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Prozessmonitor wird beim Anmelden gestartet." } }
+      }
+    },
+    "Process Patterns (comma-separated)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Process Patterns (comma-separated)" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Padrões de Processo (separados por vírgula)" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Patrones de Proceso (separados por coma)" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Motifs de processus (séparés par des virgules)" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Prozessmuster (durch Komma getrennt)" } }
+      }
+    },
+    "Quit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quit" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sair" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Salir" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Quitter" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Beenden" } }
+      }
+    },
+    "Refresh every" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Refresh every" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Atualizar a cada" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Actualizar cada" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Actualiser toutes les" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktualisieren alle" } }
+      }
+    },
+    "Refresh now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Refresh now" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Atualizar agora" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Actualizar ahora" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Actualiser" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Jetzt aktualisieren" } }
+      }
+    },
+    "Remove" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Remove" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Remover" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Quitar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Entfernen" } }
+      }
+    },
+    "Remove %@?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Remove %@?" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Remover %@?" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Quitar %@?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer %@ ?" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ entfernen?" } }
+      }
+    },
+    "Remove from monitoring" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Remove from monitoring" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Remover do monitoramento" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Quitar de la monitorización" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Retirer de la surveillance" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aus Überwachung entfernen" } }
+      }
+    },
+    "Reset to Defaults" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reset to Defaults" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Restaurar Padrões" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Restablecer Valores Predeterminados" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réinitialiser" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Auf Standard zurücksetzen" } }
+      }
+    },
+    "Restart" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Restart" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Reiniciar" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Reiniciar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Redémarrer" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Neu starten" } }
+      }
+    },
+    "Resume monitoring" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resume monitoring" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Retomar monitoramento" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Reanudar monitorización" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Reprendre la surveillance" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Überwachung fortsetzen" } }
+      }
+    },
+    "Send crash reports & diagnostics" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Send crash reports & diagnostics" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Enviar relatórios de falha e diagnóstico" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Enviar informes de errores y diagnósticos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Envoyer les rapports de plantage et diagnostics" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Absturzberichte und Diagnose senden" } }
+      }
+    },
+    "Settings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Configurações" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Configuración" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réglages" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Einstellungen" } }
+      }
+    },
+    "This process will no longer be monitored." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This process will no longer be monitored." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Este processo não será mais monitorado." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este proceso ya no se monitorizará." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ce processus ne sera plus surveillé." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dieser Prozess wird nicht mehr überwacht." } }
+      }
+    },
+    "Total: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Total: %@" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Total: %@" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Total: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Total : %@" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gesamt: %@" } }
+      }
+    },
+    "Warnings only" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Warnings only" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Apenas avisos" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Solo advertencias" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Avertissements uniquement" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur Warnungen" } }
+      }
+    },
+    "e.g. Docker" : {
+      "comment" : "TextField placeholder for display name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "e.g. Docker" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "ex.: Docker" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "p. ej. Docker" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "p. ex. Docker" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "z. B. Docker" } }
+      }
+    },
+    "e.g. docker, com.docker" : {
+      "comment" : "TextField placeholder for patterns",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "e.g. docker, com.docker" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "ex.: docker, com.docker" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "p. ej. docker, com.docker" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "p. ex. docker, com.docker" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "z. B. docker, com.docker" } }
+      }
+    }
+  }
+}

@@ -72,6 +72,9 @@ struct MonitoredProcess: Identifiable, Equatable {
     let rootPids: [pid_t]
     let totalMemoryMB: Double
     let totalSwapMB: Double
+    let totalCPU: Double
+    let memoryHistory: [Double]
+    let cpuHistory: [Double]
     let children: [ProcessChild]
     let memoryLimitMB: Int
     let appBundlePath: String?
@@ -84,6 +87,11 @@ struct MonitoredProcess: Identifiable, Equatable {
     var formattedSwap: String {
         guard status != .notRunning else { return "--" }
         return formatMemory(totalSwapMB)
+    }
+
+    var formattedCPU: String {
+        guard status != .notRunning else { return "--" }
+        return String(format: "%.0f%%", totalCPU)
     }
 
     var formattedLimit: String {

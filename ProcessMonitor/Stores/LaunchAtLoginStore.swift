@@ -35,23 +35,24 @@ final class LaunchAtLoginStore: ObservableObject {
     }
 
     func refresh() {
+        let enabledMsg = NSLocalizedString("Process Monitor will launch when you log in.", comment: "Launch at login enabled status")
         switch SMAppService.mainApp.status {
         case .enabled:
             isEnabled = true
             if statusMessage == nil {
-                statusMessage = "Process Monitor will launch when you log in."
+                statusMessage = enabledMsg
             }
         case .requiresApproval:
             isEnabled = false
-            statusMessage = "Approve Process Monitor in System Settings > General > Login Items."
+            statusMessage = NSLocalizedString("Approve Process Monitor in System Settings > General > Login Items.", comment: "Launch at login requires approval")
         case .notFound, .notRegistered:
             isEnabled = false
-            if statusMessage == nil || statusMessage == "Process Monitor will launch when you log in." {
-                statusMessage = "Enable launch at login to start monitoring automatically."
+            if statusMessage == nil || statusMessage == enabledMsg {
+                statusMessage = NSLocalizedString("Enable launch at login to start monitoring automatically.", comment: "Launch at login disabled hint")
             }
         @unknown default:
             isEnabled = false
-            statusMessage = "Launch at login is unavailable right now."
+            statusMessage = NSLocalizedString("Launch at login is unavailable right now.", comment: "Launch at login unavailable")
         }
     }
 }

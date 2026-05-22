@@ -29,15 +29,19 @@ struct ProcessChildRowView: View {
                 .truncationMode(.middle)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text("PID \(child.id)")
+            Text(String(format: NSLocalizedString("PID %d", comment: "Process ID label"), child.id))
                 .font(.caption2)
+                .foregroundStyle(.tertiary)
+
+            Text(child.formattedCPU)
+                .font(.system(.caption2, design: .monospaced))
                 .foregroundStyle(.tertiary)
 
             VStack(alignment: .trailing, spacing: 0) {
                 Text(child.formattedMemory)
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
-                Text("\(child.formattedSwap) sw")
+                Text(String(format: NSLocalizedString("%@ sw", comment: "Swap memory short label"), child.formattedSwap))
                     .font(.system(.caption2, design: .monospaced))
                     .foregroundStyle(.tertiary)
             }
@@ -62,7 +66,11 @@ struct ProcessChildRowView: View {
 
     private var confirmBar: some View {
         HStack(spacing: 8) {
-            Text("Kill \(child.command) (PID \(child.id))?")
+            Text(String(
+                format: NSLocalizedString("Kill %1$@ (PID %2$d)?", comment: "Kill child confirmation. %1=command, %2=pid"),
+                child.command,
+                child.id
+            ))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)

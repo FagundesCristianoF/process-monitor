@@ -16,6 +16,9 @@ final class WarningStateTests: XCTestCase {
             rootPids: [],
             totalMemoryMB: 100,
             totalSwapMB: 0,
+            totalCPU: 0,
+            memoryHistory: [],
+            cpuHistory: [],
             children: [],
             memoryLimitMB: 1024,
             appBundlePath: nil
@@ -27,6 +30,9 @@ final class WarningStateTests: XCTestCase {
             rootPids: [],
             totalMemoryMB: 2048,
             totalSwapMB: 0,
+            totalCPU: 0,
+            memoryHistory: [],
+            cpuHistory: [],
             children: [],
             memoryLimitMB: 1024,
             appBundlePath: nil
@@ -49,6 +55,9 @@ final class WarningStateTests: XCTestCase {
             rootPids: [],
             totalMemoryMB: 100,
             totalSwapMB: 0,
+            totalCPU: 0,
+            memoryHistory: [],
+            cpuHistory: [],
             children: [],
             memoryLimitMB: 1024,
             appBundlePath: nil
@@ -60,6 +69,9 @@ final class WarningStateTests: XCTestCase {
             rootPids: [],
             totalMemoryMB: 0,
             totalSwapMB: 0,
+            totalCPU: 0,
+            memoryHistory: [],
+            cpuHistory: [],
             children: [],
             memoryLimitMB: 1024,
             appBundlePath: nil

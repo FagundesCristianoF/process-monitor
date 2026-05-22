@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          if [ -d "/Applications/Xcode_15.4.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.4.app
+          elif [ -d "/Applications/Xcode_15.3.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.3.app
+          elif [ -d "/Applications/Xcode_15.2.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.2.app
+          else
+            echo "Falling back to default Xcode"
+            sudo xcode-select -s /Applications/Xcode.app || true
+          fi
+          xcode-select -p
+
+      - name: Print Swift version
+        run: swift --version
+
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.swiftpm
+            .build
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.swift', '**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Swift build
+        run: swift build
+
+      - name: Swift test
+        run: swift test

@@ -41,10 +41,17 @@ final class NotificationService: ObservableObject {
         }
 
         let content = UNMutableNotificationContent()
-        content.title = "Memory Warning"
-        content.body = "\(processName) is using \(formatMemory(memoryMB)) "
-            + "(limit: \(formatMemory(Double(limitMB)))). "
-            + "Consider restarting it."
+        content.title = NSLocalizedString("Memory Warning", comment: "Notification title for memory warning")
+        let bodyFormat = NSLocalizedString(
+            "%1$@ is using %2$@ (limit: %3$@). Consider restarting it.",
+            comment: "Notification body. %1 = process name, %2 = memory, %3 = limit"
+        )
+        content.body = String(
+            format: bodyFormat,
+            processName,
+            formatMemory(memoryMB),
+            formatMemory(Double(limitMB))
+        )
         content.sound = .default
 
         let request = UNNotificationRequest(
