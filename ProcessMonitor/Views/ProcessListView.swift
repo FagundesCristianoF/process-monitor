@@ -34,7 +34,9 @@ private struct WindowOpaqueAccessor: NSViewRepresentable {
             visual.material = .windowBackground
             visual.blendingMode = .behindWindow
             visual.state = .inactive
-            visual.isHidden = true
+            // Do NOT hide the view — hiding it can leave the popover window
+            // with nothing to render on subsequent shows, intermittently
+            // breaking menu bar clicks.
         }
         for sub in view.subviews {
             disableVibrancy(in: sub)

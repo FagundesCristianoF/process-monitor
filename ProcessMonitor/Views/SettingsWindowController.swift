@@ -45,14 +45,18 @@ final class SettingsWindowController {
         self.window = newWindow
     }
 
-    /// Close the MenuBarExtra popover window (its class name contains "MenuBarExtraWindow"
-    /// or "NSStatusBarWindow"). Called when opening Settings so the popover doesn't
-    /// linger alongside the new window.
+    /// Dismiss the MenuBarExtra popover by ordering its window out — NOT
+    /// closing it. Closing the window can break the underlying NSStatusItem
+    /// so subsequent menu bar clicks fail to show the popover.
+    /// We only target known popover-style classes; the status item's own
+    /// NSStatusBarWindow is left alone.
     private func dismissMenuBarPopover() {
         for win in NSApp.windows where win.isVisible {
             let cls = String(describing: type(of: win))
-            if cls.contains("MenuBarExtra") || cls.contains("NSStatusBarWindow") || cls.contains("Popover") {
-                win.close()
+            // Only popover-style classes; NEVER touch NSStatusBarWindow
+            // because that hosts the status item and closing it disables clicks.
+            if cls.contains("MenuBarExtraWindow") || cls.contains("NSPopover") {
+                win.orderOut(nil)
             }
         }
     }
