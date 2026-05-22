@@ -180,15 +180,18 @@ struct SettingsView: View {
                 }
                 Divider().opacity(0.5).padding(.horizontal, 14)
                 settingsRow {
-                    Toggle(isOn: Binding(
-                        get: { launchAtLoginStore.isEnabled },
-                        set: { launchAtLoginStore.setEnabled($0) }
-                    )) {
+                    HStack {
                         Label("Launch at login", systemImage: "power.circle")
                             .labelStyle(SettingsLabelStyle())
+                        Spacer()
+                        Toggle("", isOn: Binding(
+                            get: { launchAtLoginStore.isEnabled },
+                            set: { launchAtLoginStore.setEnabled($0) }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
                     }
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
                 }
                 if let statusMessage = launchAtLoginStore.statusMessage {
                     HStack {
@@ -235,12 +238,15 @@ struct SettingsView: View {
             VStack(spacing: 0) {
                 settingsRow {
                     VStack(alignment: .leading, spacing: 6) {
-                        Toggle(isOn: $configStore.telemetryEnabled) {
+                        HStack {
                             Label("Send crash reports & diagnostics", systemImage: "ladybug")
                                 .labelStyle(SettingsLabelStyle())
+                            Spacer()
+                            Toggle("", isOn: $configStore.telemetryEnabled)
+                                .labelsHidden()
+                                .toggleStyle(.switch)
+                                .controlSize(.small)
                         }
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
                         Text("Anonymous crash/error reports help fix bugs. Process names are stripped before sending.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -377,21 +383,9 @@ private struct DefinitionRow: View {
                 )
 
                 HStack(spacing: 8) {
-                    Toggle(isOn: $autoRestartEnabled) {
-                        Label(NSLocalizedString("Auto-restart", comment: "Auto-restart toggle"), systemImage: "arrow.triangle.2.circlepath")
-                            .labelStyle(SettingsLabelStyle())
-                            .font(.caption)
-                    }
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
-                    .onChange(of: autoRestartEnabled) { enabled in
-                        if enabled {
-                            if autoRestartMB < limitMB { autoRestartMB = min(Self.maxMB, limitMB * 1.5) }
-                            onAutoRestartChanged(Int(autoRestartMB))
-                        } else {
-                            onAutoRestartChanged(nil)
-                        }
-                    }
+                    Label(NSLocalizedString("Auto-restart", comment: "Auto-restart toggle"), systemImage: "arrow.triangle.2.circlepath")
+                        .labelStyle(SettingsLabelStyle())
+                        .font(.caption)
                     Spacer()
                     if autoRestartEnabled {
                         Text(formatMemory(autoRestartMB))
@@ -402,6 +396,18 @@ private struct DefinitionRow: View {
                             .background(Capsule().fill(.red.opacity(0.12)))
                             .foregroundStyle(.red)
                     }
+                    Toggle("", isOn: $autoRestartEnabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                        .onChange(of: autoRestartEnabled) { enabled in
+                            if enabled {
+                                if autoRestartMB < limitMB { autoRestartMB = min(Self.maxMB, limitMB * 1.5) }
+                                onAutoRestartChanged(Int(autoRestartMB))
+                            } else {
+                                onAutoRestartChanged(nil)
+                            }
+                        }
                 }
 
                 if autoRestartEnabled {
