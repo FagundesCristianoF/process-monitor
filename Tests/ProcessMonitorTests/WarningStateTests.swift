@@ -21,7 +21,8 @@ final class WarningStateTests: XCTestCase {
             cpuHistory: [],
             children: [],
             memoryLimitMB: 1024,
-            appBundlePath: nil
+            appBundlePath: nil,
+            startedBy: nil
         )
         let overLimit = MonitoredProcess(
             id: "over",
@@ -35,7 +36,8 @@ final class WarningStateTests: XCTestCase {
             cpuHistory: [],
             children: [],
             memoryLimitMB: 1024,
-            appBundlePath: nil
+            appBundlePath: nil,
+            startedBy: nil
         )
 
         XCTAssertTrue(hasOverLimitProcess([running, overLimit]))
@@ -60,7 +62,8 @@ final class WarningStateTests: XCTestCase {
             cpuHistory: [],
             children: [],
             memoryLimitMB: 1024,
-            appBundlePath: nil
+            appBundlePath: nil,
+            startedBy: nil
         )
         let notRunning = MonitoredProcess(
             id: "stopped",
@@ -74,7 +77,8 @@ final class WarningStateTests: XCTestCase {
             cpuHistory: [],
             children: [],
             memoryLimitMB: 1024,
-            appBundlePath: nil
+            appBundlePath: nil,
+            startedBy: nil
         )
 
         XCTAssertFalse(hasOverLimitProcess([running, notRunning]))

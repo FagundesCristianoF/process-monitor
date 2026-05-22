@@ -78,6 +78,7 @@ struct MonitoredProcess: Identifiable, Equatable {
     let children: [ProcessChild]
     let memoryLimitMB: Int
     let appBundlePath: String?
+    let startedBy: String?
 
     var formattedMemory: String {
         guard status != .notRunning else { return "--" }

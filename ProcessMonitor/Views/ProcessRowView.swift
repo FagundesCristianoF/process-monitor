@@ -123,7 +123,22 @@ struct ProcessRowView: View {
                 ))
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
-            } else if process.status == .notRunning {
+            }
+
+            if process.status != .notRunning, let starter = process.startedBy {
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Image(systemName: "arrow.turn.down.right")
+                        .font(.system(size: 8))
+                        .foregroundStyle(.tertiary)
+                    Text(String(format: NSLocalizedString("Started by %@", comment: "Parent process info"), starter))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            if process.status == .notRunning {
                 Text("Not running")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)

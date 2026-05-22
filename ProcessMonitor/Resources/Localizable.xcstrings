@@ -250,10 +250,20 @@
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Auto-Neustart" } }
       }
     },
-    "Auto-Restart" : {
+    "Started by %@" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Auto-Restart" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Started by %@" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Iniciado por %@" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Iniciado por %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Lancé par %@" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gestartet von %@" } }
+      }
+    },
+    "Auto-restart triggered" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Auto-restart triggered" } },
         "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Reinício automático" } },
         "es" : { "stringUnit" : { "state" : "translated", "value" : "Reinicio automático" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Redémarrage auto" } },

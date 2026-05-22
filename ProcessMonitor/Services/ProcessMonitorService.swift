@@ -301,23 +301,13 @@ final class ProcessMonitorService: ObservableObject {
             }
         }
 
-        // Walk ancestor chain to group children under their parent definition
-        var claimedByParent: [pid_t: ProcessDefinition] = [:]
-        for (pid, def) in pidToDefinition {
-            var current = pid
-            while let entry = pidToEntry[current] {
-                let parent = entry.ppid
-                if parent == current || parent <= 1 { break }
-                if let parentDef = pidToDefinition[parent], parentDef.id != def.id {
-                    claimedByParent[pid] = parentDef
-                    break
-                }
-                current = parent
-            }
-        }
-
+        // Every monitored definition is its own top-level group. We never
+        // hide one monitored process under another — Java is still shown as
+        // "Java" even when its parent (e.g. Warp) is also monitored. The
+        // "Started by …" subtitle and the children list expose the
+        // relationship without merging the rows.
         var rootPidsPerDef: [String: [pid_t]] = [:]
-        for (pid, def) in pidToDefinition where claimedByParent[pid] == nil {
+        for (pid, def) in pidToDefinition {
             rootPidsPerDef[def.id, default: []].append(pid)
         }
 
@@ -354,7 +344,8 @@ final class ProcessMonitorService: ObservableObject {
                     cpuHistory: cpuHistory[def.id] ?? [],
                     children: [],
                     memoryLimitMB: limit,
-                    appBundlePath: nil
+                    appBundlePath: nil,
+                    startedBy: nil
                 )
             }
 
@@ -362,6 +353,10 @@ final class ProcessMonitorService: ObservableObject {
             let bundlePath = rootEntries.lazy.compactMap {
                 Self.appBundlePath(from: $0.command)
             }.first
+            let startedBy = Self.resolveStarter(
+                rootEntries: rootEntries,
+                pidToEntry: pidToEntry
+            )
 
             let descendants = allDescendants(of: roots)
             let rootSet = Set(roots)
@@ -419,9 +414,45 @@ final class ProcessMonitorService: ObservableObject {
                 cpuHistory: cpuHistory[def.id] ?? [],
                 children: childItems,
                 memoryLimitMB: limit,
-                appBundlePath: bundlePath
+                appBundlePath: bundlePath,
+                startedBy: startedBy
             )
         }
+    }
+
+    /// Find a human-friendly name for what spawned this process.
+    /// Walks up the ppid chain skipping shell wrappers until it hits
+    /// a meaningful command, then returns its basename. Returns nil if
+    /// the parent is launchd/init (pid 1) or unknown.
+    private static func resolveStarter(
+        rootEntries: [RawProcessEntry],
+        pidToEntry: [pid_t: RawProcessEntry]
+    ) -> String? {
+        let shellWrappers: Set<String> = ["sh", "bash", "zsh", "fish", "dash", "ksh", "csh", "tcsh", "env", "xargs"]
+        for rootEntry in rootEntries {
+            var current = rootEntry.ppid
+            var hops = 0
+            while current > 1, hops < 12 {
+                guard let parent = pidToEntry[current] else { break }
+                let baseName = (parent.command as NSString).lastPathComponent
+                if !shellWrappers.contains(baseName.lowercased()) {
+                    return Self.friendlyStarterName(from: parent.command)
+                }
+                current = parent.ppid
+                hops += 1
+            }
+        }
+        return nil
+    }
+
+    /// Convert a raw command path into a user-friendly app name.
+    /// e.g. "/Applications/Cursor.app/Contents/MacOS/Cursor" -> "Cursor"
+    static func friendlyStarterName(from command: String) -> String {
+        if let appPath = Self.appBundlePath(from: command) {
+            return (appPath as NSString).lastPathComponent
+                .replacingOccurrences(of: ".app", with: "")
+        }
+        return (command as NSString).lastPathComponent
     }
 
     private func pushHistory(memorySample: Double, cpuSample: Double, for id: String) {

@@ -70,7 +70,7 @@ final class NotificationService: ObservableObject {
     func notifyAutoRestart(processName: String, memoryMB: Double, limitMB: Int) {
         guard Bundle.main.bundleIdentifier != nil else { return }
         let content = UNMutableNotificationContent()
-        content.title = NSLocalizedString("Auto-Restart", comment: "Auto-restart notification title")
+        content.title = NSLocalizedString("Auto-restart triggered", comment: "Auto-restart notification title")
         let bodyFormat = NSLocalizedString(
             "Restarting %1$@ — used %2$@ (limit: %3$@).",
             comment: "Auto-restart body. %1=name, %2=memory, %3=limit"
