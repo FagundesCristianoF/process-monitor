@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 // MARK: - Reusable Style Components
 
@@ -474,6 +475,8 @@ private struct AddProcessView: View {
     @State private var displayName = ""
     @State private var patternsText = ""
     @State private var limitMB: Double = 4096
+    @State private var selectedAppPath: String? = nil
+    @State private var selectedAppIcon: NSImage? = nil
 
     private static let minMB: Double = 64
     private static let maxMB: Double = 32768
@@ -501,6 +504,8 @@ private struct AddProcessView: View {
             Divider().opacity(0.5)
 
             VStack(alignment: .leading, spacing: 18) {
+                appPickerRow
+
                 fieldGroup(
                     label: NSLocalizedString("Display Name", comment: ""),
                     icon: "textformat"
@@ -573,7 +578,7 @@ private struct AddProcessView: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
         }
-        .frame(width: 400, height: 420)
+        .frame(width: 440, height: 540)
         .background(.regularMaterial)
     }
 
@@ -594,6 +599,111 @@ private struct AddProcessView: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var appPickerRow: some View {
+        HStack(spacing: 10) {
+            if let icon = selectedAppIcon {
+                Image(nsImage: icon)
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 40, height: 40)
+            } else {
+                Image(systemName: "app.dashed")
+                    .font(.system(size: 22, weight: .light))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.tint)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(.tint.opacity(0.12))
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(selectedAppPath.map { ($0 as NSString).lastPathComponent } ?? NSLocalizedString("No app selected", comment: ""))
+                    .font(.system(.callout, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text(selectedAppPath ?? NSLocalizedString("Choose an .app to auto-fill the fields below.", comment: ""))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            Spacer()
+
+            Button(action: chooseApp) {
+                HStack(spacing: 4) {
+                    Image(systemName: "folder")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text("Choose App…")
+                        .font(.system(.caption, design: .rounded, weight: .semibold))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule().fill(
+                        LinearGradient(
+                            colors: [.accentColor, .accentColor.opacity(0.85)],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                    )
+                )
+                .foregroundStyle(.white)
+                .shadow(color: .accentColor.opacity(0.3), radius: 3, y: 1)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(.quaternary.opacity(0.3))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(.quaternary.opacity(0.6), lineWidth: 0.5)
+        )
+    }
+
+    private func chooseApp() {
+        let panel = NSOpenPanel()
+        panel.title = NSLocalizedString("Choose App", comment: "")
+        panel.prompt = NSLocalizedString("Choose", comment: "")
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.application]
+        if FileManager.default.fileExists(atPath: "/Applications") {
+            panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        }
+        if panel.runModal() == .OK, let url = panel.url {
+            applySelectedApp(at: url)
+        }
+    }
+
+    private func applySelectedApp(at url: URL) {
+        let path = url.path
+        selectedAppPath = path
+        selectedAppIcon = NSWorkspace.shared.icon(forFile: path)
+
+        let bundle = Bundle(url: url)
+        let bundleName = bundle?.infoDictionary?["CFBundleName"] as? String
+            ?? bundle?.infoDictionary?["CFBundleDisplayName"] as? String
+        let appFileName = url.deletingPathExtension().lastPathComponent
+
+        if displayName.isEmpty {
+            displayName = bundleName ?? appFileName
+        }
+        let patternCandidate = "\(appFileName).app"
+        if patternsText.isEmpty {
+            patternsText = patternCandidate
+        } else if !patternsText.contains(patternCandidate) {
+            patternsText += ", \(patternCandidate)"
         }
     }
 

@@ -250,6 +250,56 @@
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Auto-Neustart" } }
       }
     },
+    "Choose App\u{2026}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose App…" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Escolher app…" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elegir app…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Choisir l'app…" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "App wählen…" } }
+      }
+    },
+    "Choose App" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose App" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Escolher app" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elegir app" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Choisir l'app" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "App wählen" } }
+      }
+    },
+    "Choose" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Escolher" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elegir" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Choisir" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wählen" } }
+      }
+    },
+    "No app selected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No app selected" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Nenhum app selecionado" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ninguna app seleccionada" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucune app sélectionnée" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine App ausgewählt" } }
+      }
+    },
+    "Choose an .app to auto-fill the fields below." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose an .app to auto-fill the fields below." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Escolha um .app para preencher os campos abaixo." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige una .app para autocompletar los campos." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Choisissez une .app pour remplir les champs ci-dessous." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wähle eine .app, um die Felder unten auszufüllen." } }
+      }
+    },
     "Started by %@" : {
       "extractionState" : "manual",
       "localizations" : {
