@@ -383,43 +383,45 @@ private struct DefinitionRow: View {
                     onChange: { onLimitChanged(Int($0)) }
                 )
 
-                HStack(spacing: 8) {
-                    Label(NSLocalizedString("Auto-restart", comment: "Auto-restart toggle"), systemImage: "arrow.triangle.2.circlepath")
-                        .labelStyle(SettingsLabelStyle())
-                        .font(.caption)
-                    Spacer()
-                    if autoRestartEnabled {
-                        Text(formatMemory(autoRestartMB))
-                            .font(.system(.caption2, design: .monospaced, weight: .medium))
-                            .monospacedDigit()
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(.red.opacity(0.12)))
-                            .foregroundStyle(.red)
-                    }
-                    Toggle("", isOn: $autoRestartEnabled)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.mini)
-                        .onChange(of: autoRestartEnabled) { enabled in
-                            if enabled {
-                                if autoRestartMB < limitMB { autoRestartMB = min(Self.maxMB, limitMB * 1.5) }
-                                onAutoRestartChanged(Int(autoRestartMB))
-                            } else {
-                                onAutoRestartChanged(nil)
-                            }
+                if definition.isRestartable {
+                    HStack(spacing: 8) {
+                        Label(NSLocalizedString("Auto-restart", comment: "Auto-restart toggle"), systemImage: "arrow.triangle.2.circlepath")
+                            .labelStyle(SettingsLabelStyle())
+                            .font(.caption)
+                        Spacer()
+                        if autoRestartEnabled {
+                            Text(formatMemory(autoRestartMB))
+                                .font(.system(.caption2, design: .monospaced, weight: .medium))
+                                .monospacedDigit()
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(.red.opacity(0.12)))
+                                .foregroundStyle(.red)
                         }
-                }
+                        Toggle("", isOn: $autoRestartEnabled)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .controlSize(.mini)
+                            .onChange(of: autoRestartEnabled) { enabled in
+                                if enabled {
+                                    if autoRestartMB < limitMB { autoRestartMB = min(Self.maxMB, limitMB * 1.5) }
+                                    onAutoRestartChanged(Int(autoRestartMB))
+                                } else {
+                                    onAutoRestartChanged(nil)
+                                }
+                            }
+                    }
 
-                if autoRestartEnabled {
-                    limitSliderRow(
-                        iconColor: .red,
-                        icon: "arrow.triangle.2.circlepath",
-                        label: NSLocalizedString("Restart at", comment: "Auto-restart threshold label"),
-                        value: $autoRestartMB,
-                        onChange: { onAutoRestartChanged(Int($0)) }
-                    )
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    if autoRestartEnabled {
+                        limitSliderRow(
+                            iconColor: .red,
+                            icon: "arrow.triangle.2.circlepath",
+                            label: NSLocalizedString("Restart at", comment: "Auto-restart threshold label"),
+                            value: $autoRestartMB,
+                            onChange: { onAutoRestartChanged(Int($0)) }
+                        )
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                 }
             }
             .animation(.easeOut(duration: 0.18), value: autoRestartEnabled)

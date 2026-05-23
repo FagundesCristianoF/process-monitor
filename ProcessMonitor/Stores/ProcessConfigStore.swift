@@ -8,7 +8,7 @@ final class ProcessConfigStore: ObservableObject {
     private static let patternVersionKey = "patternSchemaVersion"
     private static let pollIntervalKey = "pollIntervalSeconds"
     private static let isPausedKey = "monitoringPaused"
-    private static let currentPatternVersion = 2
+    private static let currentPatternVersion = 3
     static let defaultPollInterval: Double = 5
     static let minPollInterval: Double = 1
     static let maxPollInterval: Double = 60

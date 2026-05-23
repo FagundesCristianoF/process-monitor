@@ -10,6 +10,10 @@ struct ProcessDefinition: Identifiable, Equatable, Hashable, Codable {
         let lowered = command.lowercased()
         return patterns.contains { lowered.contains($0.lowercased()) }
     }
+
+    var isRestartable: Bool {
+        patterns.contains { $0.lowercased().contains(".app") }
+    }
 }
 
 extension ProcessDefinition {
@@ -47,7 +51,7 @@ extension ProcessDefinition {
         ProcessDefinition(
             id: "android_studio",
             displayName: "Android Studio",
-            patterns: ["Android Studio"],
+            patterns: ["Android Studio.app"],
             defaultLimitMB: 6144
         ),
         ProcessDefinition(

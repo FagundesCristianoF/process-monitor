@@ -172,8 +172,6 @@ final class ProcessMonitorService: ObservableObject {
     }
 
     func restartGroup(_ process: MonitoredProcess) {
-        guard let bundlePath = process.appBundlePath else { return }
-
         let allPids = process.children.map(\.id) + process.rootPids
         for pid in allPids {
             kill(pid, SIGTERM)
@@ -183,6 +181,13 @@ final class ProcessMonitorService: ObservableObject {
             for pid in allPids {
                 kill(pid, SIGKILL)
             }
+        }
+
+        guard let bundlePath = process.appBundlePath else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                self?.refresh()
+            }
+            return
         }
 
         DispatchQueue.global().asyncAfter(deadline: .now() + 2) { [weak self] in
@@ -510,7 +515,7 @@ final class ProcessMonitorService: ObservableObject {
             // Auto-restart check
             guard let autoLimit = configStore.autoRestartLimit(for: process.definition.id),
                   process.totalMemoryMB > Double(autoLimit),
-                  process.appBundlePath != nil
+                  process.definition.isRestartable
             else { continue }
 
             let last = lastAutoRestartAt[process.definition.id]
