@@ -674,7 +674,7 @@ private struct AddProcessView: View {
 
     private func chooseApp() {
         let panel = NSOpenPanel()
-        panel.title = NSLocalizedString("Choose App", comment: "")
+        panel.title = NSLocalizedString("Choose App Panel", comment: "")
         panel.prompt = NSLocalizedString("Choose", comment: "")
         panel.canChooseDirectories = false
         panel.canChooseFiles = true

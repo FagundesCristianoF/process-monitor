@@ -260,14 +260,14 @@
         "de" : { "stringUnit" : { "state" : "translated", "value" : "App wählen…" } }
       }
     },
-    "Choose App" : {
+    "Choose App Panel" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose App" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Escolher app" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elegir app" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Choisir l'app" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "App wählen" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Select Application" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Selecionar aplicativo" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Seleccionar aplicación" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Sélectionner l'application" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Anwendung auswählen" } }
       }
     },
     "Choose" : {
