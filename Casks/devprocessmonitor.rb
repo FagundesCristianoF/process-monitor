@@ -1,6 +1,6 @@
 cask "devprocessmonitor" do
-  version "1.3"
-  sha256 "ca83e6007b6784123b9cb9c27547f6a45dfa199c52413e6f37e545cdb9692388"
+  version "1.3.1"
+  sha256 "3e20723cabbc1dd912523dc1d3e4515a1cceb3de41373a311b2b52772b017bb5"
 
   url "https://github.com/FagundesCristianoF/process-monitor/releases/download/v#{version}/ProcessMonitor.zip"
   name "Process Monitor"
