@@ -70,7 +70,7 @@ Settings are persisted in UserDefaults.
 
 ## Homebrew
 
-This repo includes a tap-ready cask at `Casks/processmonitor.rb`.
+This repo includes a tap-ready cask at `Casks/devprocessmonitor.rb`.
 
 To publish it through Homebrew:
 
@@ -84,4 +84,4 @@ To publish it through Homebrew:
 2. Create a GitHub release tagged `v1.0`.
 3. Upload the notarized `ProcessMonitor.zip` from `export/`.
 4. Keep the cask `sha256` in sync with the uploaded zip.
-5. Publish the cask from a tap repository (recommended: `homebrew-processmonitor`) or use this file as the source for your tap.
+5. Publish the cask from a tap repository (recommended: `homebrew-devprocessmonitor`) or use this file as the source for your tap.
