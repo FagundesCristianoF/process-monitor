@@ -84,6 +84,7 @@ struct SettingsView: View {
                 processesSection
                 preferencesSection
                 privacySection
+                aboutSection
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 18)
@@ -270,6 +271,47 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                }
+            }
+        }
+    }
+
+    private var aboutSection: some View {
+        SettingsSection(
+            title: NSLocalizedString("About", comment: "About section title"),
+            icon: "info.circle.fill"
+        ) {
+            VStack(spacing: 0) {
+                settingsRow {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Process Monitor")
+                                .font(.callout.weight(.medium))
+                            Text(String(
+                                format: NSLocalizedString("Version %@", comment: "App version label"),
+                                AppInfo.displayVersion
+                            ))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                        }
+                        Spacer()
+                    }
+                }
+                Divider().opacity(0.5).padding(.horizontal, 14)
+                settingsRow {
+                    HStack(spacing: 8) {
+                        Link(destination: AppInfo.bugReportURL) {
+                            Label(NSLocalizedString("Report a bug", comment: "Bug report link"), systemImage: "ladybug")
+                                .font(.system(.caption, design: .rounded, weight: .medium))
+                        }
+                        Spacer()
+                        Link(destination: AppInfo.repositoryURL) {
+                            Label(NSLocalizedString("View on GitHub", comment: "GitHub repository link"), systemImage: "arrow.up.right.square")
+                                .font(.system(.caption, design: .rounded, weight: .medium))
+                        }
+                    }
+                    .foregroundStyle(.secondary)
                 }
             }
         }

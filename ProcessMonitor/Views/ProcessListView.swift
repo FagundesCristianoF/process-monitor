@@ -307,6 +307,11 @@ struct ProcessListView: View {
 
             Spacer()
 
+            Text("v\(AppInfo.version)")
+                .font(.system(.caption2, design: .monospaced))
+                .foregroundStyle(.tertiary)
+                .help(AppInfo.displayVersion)
+
             Button(action: { NSApplication.shared.terminate(nil) }) {
                 Text("Quit")
                     .font(.system(.caption, design: .rounded, weight: .medium))

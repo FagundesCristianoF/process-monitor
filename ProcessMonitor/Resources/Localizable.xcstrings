@@ -801,6 +801,46 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "p. ex. docker, com.docker" } },
         "de" : { "stringUnit" : { "state" : "translated", "value" : "z. B. docker, com.docker" } }
       }
+    },
+    "About" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "About" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sobre" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Acerca de" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "À propos" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Über" } }
+      }
+    },
+    "Version %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Version %@" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Versão %@" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Versión %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Version %@" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Version %@" } }
+      }
+    },
+    "Report a bug" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Report a bug" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Relatar um erro" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Informar de un error" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Signaler un bug" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fehler melden" } }
+      }
+    },
+    "View on GitHub" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "View on GitHub" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Ver no GitHub" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ver en GitHub" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Voir sur GitHub" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Auf GitHub ansehen" } }
+      }
     }
   }
 }
