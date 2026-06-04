@@ -249,7 +249,7 @@ struct ProcessRowView: View {
 
             Spacer()
 
-            if process.definition.isRestartable {
+            if process.canRestart {
                 confirmActionButton(
                     title: NSLocalizedString("Restart", comment: ""),
                     tint: .blue,

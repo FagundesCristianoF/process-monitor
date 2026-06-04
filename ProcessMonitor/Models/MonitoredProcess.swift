@@ -103,6 +103,15 @@ struct MonitoredProcess: Identifiable, Equatable {
         formatMemory(Double(memoryLimitMB))
     }
 
+    /// Whether a manual restart can be performed. True when a bundle path was
+    /// resolved from the actual running command — the precondition
+    /// `restartGroup` relies on to relaunch via `open`. This is runtime truth,
+    /// independent of whether the definition's patterns literally contain
+    /// ".app" (a user may monitor a bundle app by a plain name).
+    var canRestart: Bool {
+        appBundlePath != nil
+    }
+
     var childGroups: [ProcessChildGroup] {
         let grouped = Dictionary(grouping: children, by: \.command)
         return grouped.map { ProcessChildGroup(name: $0.key, children: $0.value) }
