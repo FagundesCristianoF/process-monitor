@@ -264,7 +264,7 @@ final class CleanupStoreTests: XCTestCase {
 
     func testSeedsDefaultCommandsOnFirstLoad() {
         let store = makeStore()
-        XCTAssertEqual(store.commands.count, 5)
+        XCTAssertEqual(store.commands.count, 7)
         XCTAssertTrue(store.commands.allSatisfy(\.isEnabled))
     }
 
@@ -273,7 +273,7 @@ final class CleanupStoreTests: XCTestCase {
         let store1 = CleanupStore(defaults: defaults)
         store1.add(CleanupCommand(id: UUID(), name: "Custom", command: "echo hi", isEnabled: true))
         let store2 = CleanupStore(defaults: defaults)
-        XCTAssertEqual(store2.commands.count, 6)
+        XCTAssertEqual(store2.commands.count, 8)
     }
 
     // MARK: - CRUD
@@ -469,11 +469,13 @@ final class CleanupStore: ObservableObject {
     // MARK: - Persistence
 
     private static let defaults_: [CleanupCommand] = [
-        CleanupCommand(id: UUID(), name: "iOS Simulators",   command: "xcrun simctl delete unavailable",           isEnabled: true),
-        CleanupCommand(id: UUID(), name: "Homebrew",         command: "brew cleanup --prune=all",                  isEnabled: true),
-        CleanupCommand(id: UUID(), name: "npm cache",        command: "npm cache clean --force",                   isEnabled: true),
-        CleanupCommand(id: UUID(), name: "Docker",           command: "docker system prune --volumes -f",          isEnabled: true),
-        CleanupCommand(id: UUID(), name: "Android Studio",   command: #"rm -rf ~/Library/Application\ Support/Google/AndroidStudio2025.*"#, isEnabled: true),
+        CleanupCommand(id: UUID(), name: "iOS Simulators",        command: "xcrun simctl delete unavailable",                                                                      isEnabled: true),
+        CleanupCommand(id: UUID(), name: "iOS Simulator Data",    command: "xcrun simctl erase all",                                                                               isEnabled: false),
+        CleanupCommand(id: UUID(), name: "Homebrew",              command: "brew cleanup --prune=all",                                                                             isEnabled: true),
+        CleanupCommand(id: UUID(), name: "npm cache",             command: "npm cache clean --force",                                                                              isEnabled: true),
+        CleanupCommand(id: UUID(), name: "Docker",                command: "docker system prune --volumes -f",                                                                     isEnabled: true),
+        CleanupCommand(id: UUID(), name: "Android Studio",        command: #"rm -rf ~/Library/Application\ Support/Google/AndroidStudio$(($(date +%Y)-1)).*"#,                    isEnabled: true),
+        CleanupCommand(id: UUID(), name: "Claude VM Bundles",     command: #"rm -rf ~/Library/Application\ Support/Claude/vm_bundles"#,                                           isEnabled: true),
     ]
 
     private func load() {
@@ -1130,8 +1132,10 @@ struct ProcessMonitorApp: App {
         _diskMonitorService = StateObject(wrappedValue: diskMonitor)
         _cleanupStore = StateObject(wrappedValue: cleanup)
         launchAtLogin.ensureRegistered()
-        notifications.requestPermissionIfNeeded()
+        // Defer permission request until run loop is active — requesting during
+        // init() causes macOS to auto-decline before the app window appears.
         DispatchQueue.main.async {
+            notifications.requestPermissionIfNeeded()
             monitor.startPolling()
             diskMonitor.startPolling()
         }

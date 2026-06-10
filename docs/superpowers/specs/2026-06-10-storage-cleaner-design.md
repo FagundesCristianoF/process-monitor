@@ -26,13 +26,15 @@ Persisted to `UserDefaults` key `"cleanupCommands"` as JSON, identical pattern t
 
 ### Default commands (seeded on first launch)
 
-| Name | Command |
-|------|---------|
-| iOS Simulators | `xcrun simctl delete unavailable` |
-| Homebrew | `brew cleanup --prune=all` |
-| npm cache | `npm cache clean --force` |
-| Docker | `docker system prune --volumes -f` |
-| Old Android Studio | `rm -rf ~/Library/Application\ Support/Google/AndroidStudio2025.*` |
+| Name | Command | Enabled by default |
+|------|---------|-------------------|
+| iOS Simulators | `xcrun simctl delete unavailable` | ✅ |
+| iOS Simulator Data | `xcrun simctl erase all` | ❌ (destructive) |
+| Homebrew | `brew cleanup --prune=all` | ✅ |
+| npm cache | `npm cache clean --force` | ✅ |
+| Docker | `docker system prune --volumes -f` | ✅ |
+| Android Studio | `rm -rf ~/Library/Application\ Support/Google/AndroidStudio$(($(date +%Y)-1)).*` | ✅ |
+| Claude VM Bundles | `rm -rf ~/Library/Application\ Support/Claude/vm_bundles` | ✅ |
 
 ---
 
