@@ -142,8 +142,8 @@ final class CleanupStore: ObservableObject {
         CleanupCommand(name: "iOS Simulator Data", command: "xcrun simctl erase all",                                             isEnabled: false),
         CleanupCommand(name: "Homebrew",           command: "brew cleanup --prune=all",                                           isEnabled: true),
         CleanupCommand(name: "npm cache",          command: "npm cache clean --force",                                            isEnabled: true),
-        CleanupCommand(name: "Docker",             command: "docker system prune --volumes -f",                                   isEnabled: true),
-        CleanupCommand(name: "Android Studio",     command: #"rm -rf ~/Library/Application\ Support/Google/AndroidStudio$(($(date +%Y)-1)).*"#, isEnabled: true),
+        CleanupCommand(name: "Docker",             command: "docker system prune --volumes -f",                                   isEnabled: false),
+        CleanupCommand(name: "Android Studio",     command: #"rm -rf ~/Library/Application\ Support/Google/AndroidStudio*"#,                   isEnabled: true),
         CleanupCommand(name: "Claude VM Bundles",  command: #"rm -rf ~/Library/Application\ Support/Claude/vm_bundles"#,          isEnabled: true),
     ]
 

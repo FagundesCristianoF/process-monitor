@@ -4,6 +4,7 @@ import UserNotifications
 final class NotificationService: ObservableObject {
     private var notifiedDefinitionIDs: Set<String> = []
     private var permissionGranted = false
+    private let queue = DispatchQueue(label: "NotificationService.state")
 
     init() {}
 
@@ -20,13 +21,21 @@ final class NotificationService: ObservableObject {
     }
 
     func notifyIfNeeded(processName: String, memoryMB: Double, limitMB: Int, definitionID: String) {
-        guard !notifiedDefinitionIDs.contains(definitionID) else { return }
-        notifiedDefinitionIDs.insert(definitionID)
+        var shouldSend = false
+        queue.sync {
+            if !notifiedDefinitionIDs.contains(definitionID) {
+                notifiedDefinitionIDs.insert(definitionID)
+                shouldSend = true
+            }
+        }
+        guard shouldSend else { return }
         sendNotification(processName: processName, memoryMB: memoryMB, limitMB: limitMB)
     }
 
     func resetMemoryNotification(for definitionID: String) {
-        notifiedDefinitionIDs.remove(definitionID)
+        queue.sync {
+            notifiedDefinitionIDs.remove(definitionID)
+        }
     }
 
     private func sendNotification(processName: String, memoryMB: Double, limitMB: Int) {
