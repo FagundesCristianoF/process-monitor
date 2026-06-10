@@ -38,6 +38,9 @@ final class ProcessConfigStore: ObservableObject {
     @Published var telemetryEnabled: Bool {
         didSet { if isInitialized { persist() } }
     }
+    @Published var diskVolumes: [DiskVolume] = [] {
+        didSet { if isInitialized { persist() } }
+    }
     @Published var preferredLanguage: String? {
         didSet {
             if isInitialized {
@@ -60,6 +63,7 @@ final class ProcessConfigStore: ObservableObject {
         var telemetryEnabled: Bool?
         var preferredLanguage: String?
         var autoRestartLimits: [String: Int]?
+        var diskVolumes: [DiskVolume]?
     }
 
     private func applyLanguagePreference() {
@@ -81,6 +85,7 @@ final class ProcessConfigStore: ObservableObject {
             self.isPaused = loaded.isPaused
             self.telemetryEnabled = loaded.telemetryEnabled ?? true
             self.preferredLanguage = loaded.preferredLanguage
+            self.diskVolumes = loaded.diskVolumes ?? [.bootDefault]
             self.definitions = loaded.definitions.isEmpty
                 ? ProcessDefinition.builtInDefaults
                 : loaded.definitions
@@ -103,6 +108,7 @@ final class ProcessConfigStore: ObservableObject {
             }
             self.limits = loadedLimits
             self.autoRestartLimits = [:]
+            self.diskVolumes = [.bootDefault]
             self.patternSchemaVersion = defaults.integer(forKey: Self.patternVersionKey)
         }
 
@@ -187,6 +193,22 @@ final class ProcessConfigStore: ObservableObject {
         definitions[idx] = definition
     }
 
+    // MARK: - Disk Volumes
+
+    func addDiskVolume(_ volume: DiskVolume) {
+        guard !diskVolumes.contains(where: { $0.id == volume.id }) else { return }
+        diskVolumes.append(volume)
+    }
+
+    func removeDiskVolume(id: String) {
+        diskVolumes.removeAll { $0.id == id }
+    }
+
+    func updateDiskVolume(_ volume: DiskVolume) {
+        guard let idx = diskVolumes.firstIndex(where: { $0.id == volume.id }) else { return }
+        diskVolumes[idx] = volume
+    }
+
     func resetToDefaults() {
         definitions = ProcessDefinition.builtInDefaults
         var newLimits: [String: Int] = [:]
@@ -207,7 +229,8 @@ final class ProcessConfigStore: ObservableObject {
             patternSchemaVersion: patternSchemaVersion,
             telemetryEnabled: telemetryEnabled,
             preferredLanguage: preferredLanguage,
-            autoRestartLimits: autoRestartLimits
+            autoRestartLimits: autoRestartLimits,
+            diskVolumes: diskVolumes
         )
         do {
             let dir = configFileURL.deletingLastPathComponent()

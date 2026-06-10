@@ -51,3 +51,10 @@ func formatMemory(_ mb: Double) -> String {
     }
     return String(format: "%.0f MB", mb)
 }
+
+func formatDiskGB(_ gb: Double) -> String {
+    if gb >= 1000 {
+        return String(format: "%.1f TB", gb / 1000)
+    }
+    return String(format: "%.1f GB", gb)
+}

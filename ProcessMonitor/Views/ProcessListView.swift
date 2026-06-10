@@ -44,6 +44,73 @@ private struct WindowOpaqueAccessor: NSViewRepresentable {
     }
 }
 
+// MARK: - Disk Volume Row
+
+private struct DiskVolumeRow: View {
+    let status: DiskVolumeStatus
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "internaldrive.fill")
+                .font(.system(size: 13, weight: .medium))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(status.isWarning ? .orange : .secondary)
+                .frame(width: 18)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(status.volume.displayName)
+                    .font(.system(.caption, weight: .medium))
+                    .lineLimit(1)
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .fill(.quaternary.opacity(0.5))
+                            .frame(height: 4)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .fill(barColor)
+                            .frame(width: geo.size.width * usedFraction, height: 4)
+                    }
+                }
+                .frame(height: 4)
+            }
+
+            Spacer(minLength: 6)
+
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(String(format: NSLocalizedString("%@ free", comment: "Disk free space label. %@ = formatted size"), formatDiskGB(status.freeGB)))
+                    .font(.system(.caption2, design: .monospaced, weight: .medium))
+                    .foregroundStyle(status.isWarning ? .orange : .primary)
+                    .monospacedDigit()
+                Text(formatDiskGB(status.totalGB))
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .monospacedDigit()
+            }
+
+            if status.isWarning {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 10))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.orange)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+    }
+
+    private var usedFraction: Double {
+        guard status.totalGB > 0 else { return 0 }
+        return min(1, status.usedGB / status.totalGB)
+    }
+
+    private var barColor: Color {
+        let used = usedFraction
+        if used > 0.9 { return .red }
+        if used > 0.8 { return .orange }
+        return Color.accentColor
+    }
+}
+
 enum ProcessSortOrder: String, CaseIterable {
     case active = "Active"
     case cpu = "CPU"
@@ -66,6 +133,7 @@ enum ProcessSortOrder: String, CaseIterable {
 
 struct ProcessListView: View {
     @ObservedObject var monitorService: ProcessMonitorService
+    @ObservedObject var diskMonitorService: DiskMonitorService
     @ObservedObject var configStore: ProcessConfigStore
     @ObservedObject var launchAtLoginStore: LaunchAtLoginStore
     @AppStorage("processSortOrder") private var sortOrder: String = ProcessSortOrder.active.rawValue
@@ -106,6 +174,10 @@ struct ProcessListView: View {
             sortBar
             Divider().opacity(0.5)
             processList
+            if !diskMonitorService.statuses.isEmpty {
+                Divider().opacity(0.5)
+                diskSection
+            }
             Divider().opacity(0.5)
             footer
         }
@@ -281,6 +353,19 @@ struct ProcessListView: View {
                         }
                     }
                     .padding(.vertical, 2)
+                }
+            }
+        }
+    }
+
+    // MARK: - Disk Section
+
+    private var diskSection: some View {
+        VStack(spacing: 0) {
+            ForEach(diskMonitorService.statuses) { status in
+                DiskVolumeRow(status: status)
+                if status.id != diskMonitorService.statuses.last?.id {
+                    Divider().opacity(0.4).padding(.horizontal, 14)
                 }
             }
         }

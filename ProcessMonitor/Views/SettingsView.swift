@@ -76,12 +76,15 @@ struct SettingsView: View {
     @ObservedObject var configStore: ProcessConfigStore
     @ObservedObject var launchAtLoginStore: LaunchAtLoginStore
     @State private var showAddForm = false
+    @State private var showAddDiskForm = false
     @State private var showRestartAlert = false
+    @State private var pollIntervalDraft: Double = ProcessConfigStore.defaultPollInterval
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 processesSection
+                diskSection
                 preferencesSection
                 privacySection
                 aboutSection
@@ -91,9 +94,15 @@ struct SettingsView: View {
         }
         .frame(minWidth: 460, minHeight: 560)
         .background(.regularMaterial)
+        .onAppear { pollIntervalDraft = configStore.pollIntervalSeconds }
         .sheet(isPresented: $showAddForm) {
             AddProcessView { definition in
                 configStore.addDefinition(definition)
+            }
+        }
+        .sheet(isPresented: $showAddDiskForm) {
+            AddDiskVolumeView { volume in
+                configStore.addDiskVolume(volume)
             }
         }
         .alert(
@@ -158,6 +167,59 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Disk Section
+
+    private var diskSection: some View {
+        SettingsSection(
+            title: NSLocalizedString("Disk Monitoring", comment: ""),
+            icon: "internaldrive.fill",
+            trailing: AnyView(
+                Button(action: { showAddDiskForm = true }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("Add")
+                            .font(.system(.caption, design: .rounded, weight: .semibold))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule().fill(
+                            LinearGradient(
+                                colors: [.accentColor, .accentColor.opacity(0.85)],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        )
+                    )
+                    .foregroundStyle(.white)
+                    .shadow(color: .accentColor.opacity(0.3), radius: 3, y: 1)
+                }
+                .buttonStyle(.plain)
+                .help(NSLocalizedString("Add a volume to monitor", comment: "Add disk volume button tooltip"))
+            )
+        ) {
+            VStack(spacing: 0) {
+                if configStore.diskVolumes.isEmpty {
+                    Text(NSLocalizedString("No volumes monitored.", comment: "Empty state for disk monitoring"))
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .padding(14)
+                } else {
+                    ForEach(configStore.diskVolumes) { volume in
+                        DiskVolumeSettingsRow(
+                            volume: volume,
+                            onUpdate: { configStore.updateDiskVolume($0) },
+                            onRemove: { configStore.removeDiskVolume(id: volume.id) }
+                        )
+                        if volume.id != configStore.diskVolumes.last?.id {
+                            Divider().opacity(0.5).padding(.horizontal, 14)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Preferences
 
     private var preferencesSection: some View {
@@ -215,11 +277,13 @@ struct SettingsView: View {
                             .labelStyle(SettingsLabelStyle())
                             .layoutPriority(1)
                         Slider(
-                            value: $configStore.pollIntervalSeconds,
+                            value: $pollIntervalDraft,
                             in: ProcessConfigStore.minPollInterval...ProcessConfigStore.maxPollInterval,
                             step: 1
-                        )
-                        Text("\(Int(configStore.pollIntervalSeconds))s")
+                        ) { editing in
+                            if !editing { configStore.pollIntervalSeconds = pollIntervalDraft }
+                        }
+                        Text("\(Int(pollIntervalDraft))s")
                             .font(.system(.caption, design: .monospaced, weight: .medium))
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
@@ -498,15 +562,311 @@ private struct DefinitionRow: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .frame(width: 64, alignment: .leading)
-            Slider(value: value, in: Self.minMB...Self.maxMB, step: Self.stepMB)
-                .controlSize(.small)
-                .onChange(of: value.wrappedValue) { newValue in
-                    onChange(newValue)
-                }
+            Slider(value: value, in: Self.minMB...Self.maxMB, step: Self.stepMB) { editing in
+                if !editing { onChange(value.wrappedValue) }
+            }
+            .controlSize(.small)
             Stepper("", value: value, in: Self.minMB...Self.maxMB, step: Self.stepMB)
                 .labelsHidden()
                 .controlSize(.mini)
+                .onChange(of: value.wrappedValue) { newValue in onChange(newValue) }
         }
+    }
+}
+
+// MARK: - Disk Volume Settings Row
+
+private struct DiskVolumeSettingsRow: View {
+    let volume: DiskVolume
+    let onUpdate: (DiskVolume) -> Void
+    let onRemove: () -> Void
+
+    @State private var showConfirmRemove = false
+    @State private var thresholdPercent: Double = 10
+    @State private var thresholdGB: Double = 5
+    @State private var percentEnabled: Bool = true
+    @State private var gbEnabled: Bool = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 10) {
+                Image(systemName: "internaldrive.fill")
+                    .font(.system(size: 16))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.tint)
+                    .frame(width: 28)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(volume.displayName)
+                        .font(.system(.callout, weight: .semibold))
+                    Text(volume.path)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                }
+
+                Spacer()
+
+                Button(action: { showConfirmRemove = true }) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 11))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.red.opacity(0.7))
+                        .frame(width: 22, height: 22)
+                }
+                .buttonStyle(.plain)
+                .help(NSLocalizedString("Remove volume", comment: "Remove disk volume button tooltip"))
+                .alert(
+                    String(format: NSLocalizedString("Remove %@?", comment: ""), volume.displayName),
+                    isPresented: $showConfirmRemove,
+                    actions: {
+                        Button("Cancel", role: .cancel) {}
+                        Button("Remove", role: .destructive, action: onRemove)
+                    },
+                    message: { Text(NSLocalizedString("This volume will no longer be monitored.", comment: "Disk volume removal alert message")) }
+                )
+            }
+
+            thresholdRow(
+                enabled: $percentEnabled,
+                icon: "percent",
+                label: NSLocalizedString("Warn below", comment: ""),
+                value: $thresholdPercent,
+                range: 1...50,
+                step: 1,
+                format: { "\(Int($0))%" },
+                onToggle: { commitUpdate() },
+                onChange: { commitUpdate() }
+            )
+
+            thresholdRow(
+                enabled: $gbEnabled,
+                icon: "internaldrive",
+                label: NSLocalizedString("Warn below", comment: ""),
+                value: $thresholdGB,
+                range: 1...500,
+                step: 1,
+                format: { formatDiskGB($0) },
+                onToggle: { commitUpdate() },
+                onChange: { commitUpdate() }
+            )
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .onAppear {
+            thresholdPercent = volume.thresholdPercent ?? 10
+            thresholdGB = volume.thresholdGB ?? 5
+            percentEnabled = volume.thresholdPercent != nil
+            gbEnabled = volume.thresholdGB != nil
+        }
+    }
+
+    private func thresholdRow(
+        enabled: Binding<Bool>,
+        icon: String,
+        label: String,
+        value: Binding<Double>,
+        range: ClosedRange<Double>,
+        step: Double,
+        format: @escaping (Double) -> String,
+        onToggle: @escaping () -> Void,
+        onChange: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 8) {
+            Toggle("", isOn: enabled)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .onChange(of: enabled.wrappedValue) { _ in onToggle() }
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.secondary)
+                .frame(width: 14)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(width: 64, alignment: .leading)
+            Slider(value: value, in: range, step: step) { editing in
+                if !editing, enabled.wrappedValue { onChange() }
+            }
+            .controlSize(.small)
+            .disabled(!enabled.wrappedValue)
+            Stepper("", value: value, in: range, step: step)
+                .labelsHidden()
+                .controlSize(.mini)
+                .disabled(!enabled.wrappedValue)
+                .onChange(of: value.wrappedValue) { _ in if enabled.wrappedValue { onChange() } }
+            Text(format(value.wrappedValue))
+                .font(.system(.caption2, design: .monospaced, weight: .medium))
+                .monospacedDigit()
+                .foregroundStyle(enabled.wrappedValue ? .primary : .tertiary)
+                .frame(width: 48, alignment: .trailing)
+        }
+    }
+
+    private func commitUpdate() {
+        var updated = volume
+        updated.thresholdPercent = percentEnabled ? thresholdPercent : nil
+        updated.thresholdGB = gbEnabled ? thresholdGB : nil
+        onUpdate(updated)
+    }
+}
+
+// MARK: - Add Disk Volume View
+
+private struct AddDiskVolumeView: View {
+    let onAdd: (DiskVolume) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedPath: String = "/"
+    @State private var displayName: String = ""
+    @State private var thresholdPercent: Double = 10
+    @State private var thresholdGB: Double = 5
+    @State private var percentEnabled: Bool = true
+    @State private var gbEnabled: Bool = true
+
+    private var mountedVolumes: [(path: String, name: String)] {
+        let fm = FileManager.default
+        let urls = fm.mountedVolumeURLs(
+            includingResourceValuesForKeys: [.volumeNameKey, .volumeIsLocalKey],
+            options: [.skipHiddenVolumes]
+        ) ?? []
+        return urls.compactMap { url in
+            guard (try? url.resourceValues(forKeys: [.volumeIsLocalKey]).volumeIsLocal) == true
+            else { return nil }
+            let name = (try? url.resourceValues(forKeys: [.volumeNameKey]).volumeName) ?? url.lastPathComponent
+            return (path: url.path, name: name)
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "internaldrive.fill")
+                    .font(.system(size: 16))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.tint)
+                Text(NSLocalizedString("Add Volume", comment: "Add disk volume sheet title"))
+                    .font(.system(.headline, design: .rounded, weight: .semibold))
+                Spacer()
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+
+            Divider().opacity(0.5)
+
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label(NSLocalizedString("Volume", comment: "Disk volume picker label"), systemImage: "internaldrive")
+                        .labelStyle(SettingsLabelStyle())
+                        .font(.system(.caption, weight: .semibold))
+                    Picker("", selection: $selectedPath) {
+                        ForEach(mountedVolumes, id: \.path) { vol in
+                            Text("\(vol.name)  (\(vol.path))").tag(vol.path)
+                        }
+                    }
+                    .labelsHidden()
+                    .onChange(of: selectedPath) { path in
+                        if displayName.isEmpty || mountedVolumes.contains(where: { $0.name == displayName }) {
+                            displayName = mountedVolumes.first(where: { $0.path == path })?.name ?? path
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Label(NSLocalizedString("Display Name", comment: "Volume display name label"), systemImage: "textformat")
+                        .labelStyle(SettingsLabelStyle())
+                        .font(.system(.caption, weight: .semibold))
+                    TextField(NSLocalizedString("e.g. Macintosh HD", comment: "Volume display name placeholder"), text: $displayName)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(NSLocalizedString("Alert Thresholds", comment: "Disk alert thresholds section label"), systemImage: "bell.badge")
+                        .labelStyle(SettingsLabelStyle())
+                        .font(.system(.caption, weight: .semibold))
+
+                    HStack(spacing: 8) {
+                        Toggle("", isOn: $percentEnabled)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .controlSize(.mini)
+                        Text(NSLocalizedString("Free space below", comment: "Disk threshold label (percent)"))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Slider(value: $thresholdPercent, in: 1...50, step: 1)
+                            .controlSize(.small)
+                            .disabled(!percentEnabled)
+                        Text("\(Int(thresholdPercent))%")
+                            .font(.system(.caption2, design: .monospaced, weight: .medium))
+                            .monospacedDigit()
+                            .frame(width: 36, alignment: .trailing)
+                            .foregroundStyle(percentEnabled ? .primary : .tertiary)
+                    }
+
+                    HStack(spacing: 8) {
+                        Toggle("", isOn: $gbEnabled)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .controlSize(.mini)
+                        Text(NSLocalizedString("Free space below", comment: "Disk threshold label (GB)"))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Slider(value: $thresholdGB, in: 1...500, step: 1)
+                            .controlSize(.small)
+                            .disabled(!gbEnabled)
+                        Text(formatDiskGB(thresholdGB))
+                            .font(.system(.caption2, design: .monospaced, weight: .medium))
+                            .monospacedDigit()
+                            .frame(width: 48, alignment: .trailing)
+                            .foregroundStyle(gbEnabled ? .primary : .tertiary)
+                    }
+                }
+            }
+            .padding(18)
+
+            Spacer(minLength: 0)
+            Divider().opacity(0.5)
+
+            HStack {
+                Button(NSLocalizedString("Cancel", comment: "Cancel button")) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .controlSize(.large)
+                Spacer()
+                Button(NSLocalizedString("Add", comment: "Add disk volume button")) { addVolume() }
+                    .keyboardShortcut(.defaultAction)
+                    .controlSize(.large)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(displayName.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+        }
+        .frame(width: 420, height: 440)
+        .background(.regularMaterial)
+        .onAppear {
+            if let first = mountedVolumes.first {
+                selectedPath = first.path
+                displayName = first.name
+            }
+        }
+    }
+
+    private func addVolume() {
+        let name = displayName.trimmingCharacters(in: .whitespaces)
+        let rawId = selectedPath
+            .replacingOccurrences(of: "/", with: "_")
+            .filter { $0.isLetter || $0.isNumber || $0 == "_" }
+        let id = rawId.isEmpty ? "vol_\(abs(selectedPath.hashValue))" : rawId
+        let volume = DiskVolume(
+            id: id,
+            displayName: name,
+            path: selectedPath,
+            thresholdPercent: percentEnabled ? thresholdPercent : nil,
+            thresholdGB: gbEnabled ? thresholdGB : nil
+        )
+        onAdd(volume)
+        dismiss()
     }
 }
 

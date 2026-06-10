@@ -67,6 +67,32 @@ final class NotificationService: ObservableObject {
         }
     }
 
+    func notifyDiskWarning(status: DiskVolumeStatus) {
+        guard Bundle.main.bundleIdentifier != nil else {
+            print("⚠ \(status.volume.displayName): \(formatDiskGB(status.freeGB)) free (\(String(format: "%.1f", status.freePercent))%)")
+            return
+        }
+        let content = UNMutableNotificationContent()
+        content.title = NSLocalizedString("Low Disk Space", comment: "Disk warning notification title")
+        let bodyFormat = NSLocalizedString(
+            "%1$@ has %2$@ free (%3$@). Consider cleaning up.",
+            comment: "Disk warning body. %1=volume name, %2=free space, %3=percent"
+        )
+        content.body = String(
+            format: bodyFormat,
+            status.volume.displayName,
+            formatDiskGB(status.freeGB),
+            String(format: "%.1f%%", status.freePercent)
+        )
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: "disk_\(status.volume.id)_\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request) { _ in }
+    }
+
     func notifyAutoRestart(processName: String, memoryMB: Double, limitMB: Int) {
         guard Bundle.main.bundleIdentifier != nil else { return }
         let content = UNMutableNotificationContent()

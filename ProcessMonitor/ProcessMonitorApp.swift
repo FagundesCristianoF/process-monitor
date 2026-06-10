@@ -23,6 +23,7 @@ struct ProcessMonitorApp: App {
     @StateObject private var launchAtLoginStore: LaunchAtLoginStore
     @StateObject private var notificationService: NotificationService
     @StateObject private var monitorService: ProcessMonitorService
+    @StateObject private var diskMonitorService: DiskMonitorService
 
     init() {
         let config = ProcessConfigStore()
@@ -34,14 +35,20 @@ struct ProcessMonitorApp: App {
             configStore: config,
             notificationService: notifications
         )
+        let diskMonitor = DiskMonitorService(
+            configStore: config,
+            notificationService: notifications
+        )
         _configStore = StateObject(wrappedValue: config)
         _launchAtLoginStore = StateObject(wrappedValue: launchAtLogin)
         _notificationService = StateObject(wrappedValue: notifications)
         _monitorService = StateObject(wrappedValue: monitor)
+        _diskMonitorService = StateObject(wrappedValue: diskMonitor)
         launchAtLogin.ensureRegistered()
         notifications.requestPermissionIfNeeded()
         DispatchQueue.main.async {
             monitor.startPolling()
+            diskMonitor.startPolling()
         }
     }
 
@@ -49,6 +56,7 @@ struct ProcessMonitorApp: App {
         MenuBarExtra {
             ProcessListView(
                 monitorService: monitorService,
+                diskMonitorService: diskMonitorService,
                 configStore: configStore,
                 launchAtLoginStore: launchAtLoginStore
             )
