@@ -6,7 +6,7 @@ import UserNotifications
 // MARK: - Settings Tab
 
 enum SettingsTab: String, CaseIterable, Identifiable {
-    case processes, disk, preferences, privacy, about
+    case processes, disk, storage, preferences, privacy, about
 
     var id: String { rawValue }
 
@@ -14,6 +14,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .processes:  return NSLocalizedString("Processes", comment: "")
         case .disk:       return NSLocalizedString("Disk", comment: "")
+        case .storage:    return NSLocalizedString("Storage", comment: "")
         case .preferences:return NSLocalizedString("Preferences", comment: "")
         case .privacy:    return NSLocalizedString("Privacy", comment: "")
         case .about:      return NSLocalizedString("About", comment: "")
@@ -24,6 +25,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .processes:   return "list.bullet.rectangle.fill"
         case .disk:        return "internaldrive.fill"
+        case .storage:     return "sparkles"
         case .preferences: return "gearshape.fill"
         case .privacy:     return "lock.shield.fill"
         case .about:       return "info.circle.fill"
@@ -34,6 +36,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .processes:   return Color(red: 0.20, green: 0.47, blue: 0.97)
         case .disk:        return Color(red: 0.94, green: 0.58, blue: 0.14)
+        case .storage:     return Color(red: 0.20, green: 0.75, blue: 0.55)
         case .preferences: return Color(red: 0.56, green: 0.56, blue: 0.58)
         case .privacy:     return Color(red: 0.13, green: 0.78, blue: 0.40)
         case .about:       return Color(red: 0.56, green: 0.36, blue: 0.97)
@@ -136,6 +139,7 @@ struct SettingsView: View {
     @ObservedObject var configStore: ProcessConfigStore
     @ObservedObject var launchAtLoginStore: LaunchAtLoginStore
     @ObservedObject var diskMonitorService: DiskMonitorService
+    @ObservedObject var cleanupStore: CleanupStore
 
     @State private var selectedTab: SettingsTab = .processes
     @State private var showAddForm = false
@@ -199,6 +203,7 @@ struct SettingsView: View {
                 switch selectedTab {
                 case .processes:   processesDetail
                 case .disk:        diskDetail
+                case .storage:     StorageCleanerView(store: cleanupStore)
                 case .preferences: preferencesDetail
                 case .privacy:     privacyDetail
                 case .about:       aboutDetail
