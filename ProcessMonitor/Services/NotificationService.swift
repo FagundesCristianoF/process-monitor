@@ -2,7 +2,7 @@ import Foundation
 import UserNotifications
 
 final class NotificationService: ObservableObject {
-    private var notifiedPIDs: Set<pid_t> = []
+    private var notifiedDefinitionIDs: Set<String> = []
     private var permissionGranted = false
 
     init() {}
@@ -19,11 +19,14 @@ final class NotificationService: ObservableObject {
         }
     }
 
-    func notifyIfNeeded(processName: String, memoryMB: Double, limitMB: Int, pids: [pid_t]) {
-        let newPIDs = pids.filter { !notifiedPIDs.contains($0) }
-        guard !newPIDs.isEmpty else { return }
-        newPIDs.forEach { notifiedPIDs.insert($0) }
+    func notifyIfNeeded(processName: String, memoryMB: Double, limitMB: Int, definitionID: String) {
+        guard !notifiedDefinitionIDs.contains(definitionID) else { return }
+        notifiedDefinitionIDs.insert(definitionID)
         sendNotification(processName: processName, memoryMB: memoryMB, limitMB: limitMB)
+    }
+
+    func resetMemoryNotification(for definitionID: String) {
+        notifiedDefinitionIDs.remove(definitionID)
     }
 
     private func sendNotification(processName: String, memoryMB: Double, limitMB: Int) {

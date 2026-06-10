@@ -505,12 +505,18 @@ final class ProcessMonitorService: ObservableObject {
 
     private func checkMemoryLimits(_ processes: [MonitoredProcess]) {
         let now = Date()
-        for process in processes where process.status == .overLimit {
+        for process in processes {
+            if process.status != .overLimit {
+                // Process dropped below limit — reset so it can notify again on next spike
+                notificationService.resetMemoryNotification(for: process.definition.id)
+                continue
+            }
+
             notificationService.notifyIfNeeded(
                 processName: process.definition.displayName,
                 memoryMB: process.totalMemoryMB,
                 limitMB: process.memoryLimitMB,
-                pids: process.rootPids
+                definitionID: process.definition.id
             )
 
             // Auto-restart check
