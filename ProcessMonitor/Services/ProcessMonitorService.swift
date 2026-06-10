@@ -509,7 +509,8 @@ final class ProcessMonitorService: ObservableObject {
             notificationService.notifyIfNeeded(
                 processName: process.definition.displayName,
                 memoryMB: process.totalMemoryMB,
-                limitMB: process.memoryLimitMB
+                limitMB: process.memoryLimitMB,
+                pids: process.rootPids
             )
 
             // Auto-restart check

@@ -2,8 +2,7 @@ import Foundation
 import UserNotifications
 
 final class NotificationService: ObservableObject {
-    private var lastNotificationTime: [String: Date] = [:]
-    private let cooldown: TimeInterval = 300 // 5 minutes
+    private var notifiedPIDs: Set<pid_t> = []
     private var permissionGranted = false
 
     init() {}
@@ -20,14 +19,10 @@ final class NotificationService: ObservableObject {
         }
     }
 
-    func notifyIfNeeded(processName: String, memoryMB: Double, limitMB: Int) {
-        let now = Date()
-        if let last = lastNotificationTime[processName],
-           now.timeIntervalSince(last) < cooldown {
-            return
-        }
-
-        lastNotificationTime[processName] = now
+    func notifyIfNeeded(processName: String, memoryMB: Double, limitMB: Int, pids: [pid_t]) {
+        let newPIDs = pids.filter { !notifiedPIDs.contains($0) }
+        guard !newPIDs.isEmpty else { return }
+        newPIDs.forEach { notifiedPIDs.insert($0) }
         sendNotification(processName: processName, memoryMB: memoryMB, limitMB: limitMB)
     }
 
