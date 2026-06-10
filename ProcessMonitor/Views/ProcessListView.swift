@@ -136,6 +136,7 @@ struct ProcessListView: View {
     @ObservedObject var diskMonitorService: DiskMonitorService
     @ObservedObject var configStore: ProcessConfigStore
     @ObservedObject var launchAtLoginStore: LaunchAtLoginStore
+    @ObservedObject var cleanupStore: CleanupStore
     @AppStorage("processSortOrder") private var sortOrder: String = ProcessSortOrder.active.rawValue
     @AppStorage("filterWarningsOnly") private var filterWarningsOnly: Bool = false
 
@@ -227,7 +228,8 @@ struct ProcessListView: View {
                         SettingsWindowController.shared.open(
                             configStore: configStore,
                             launchAtLoginStore: launchAtLoginStore,
-                            diskMonitorService: diskMonitorService
+                            diskMonitorService: diskMonitorService,
+                            cleanupStore: cleanupStore
                         )
                     }
                 )

@@ -24,6 +24,7 @@ struct ProcessMonitorApp: App {
     @StateObject private var notificationService: NotificationService
     @StateObject private var monitorService: ProcessMonitorService
     @StateObject private var diskMonitorService: DiskMonitorService
+    @StateObject private var cleanupStore: CleanupStore
 
     init() {
         let config = ProcessConfigStore()
@@ -39,14 +40,16 @@ struct ProcessMonitorApp: App {
             configStore: config,
             notificationService: notifications
         )
+        let cleanup = CleanupStore()
         _configStore = StateObject(wrappedValue: config)
         _launchAtLoginStore = StateObject(wrappedValue: launchAtLogin)
         _notificationService = StateObject(wrappedValue: notifications)
         _monitorService = StateObject(wrappedValue: monitor)
         _diskMonitorService = StateObject(wrappedValue: diskMonitor)
+        _cleanupStore = StateObject(wrappedValue: cleanup)
         launchAtLogin.ensureRegistered()
-        notifications.requestPermissionIfNeeded()
         DispatchQueue.main.async {
+            notifications.requestPermissionIfNeeded()
             monitor.startPolling()
             diskMonitor.startPolling()
         }
@@ -58,7 +61,8 @@ struct ProcessMonitorApp: App {
                 monitorService: monitorService,
                 diskMonitorService: diskMonitorService,
                 configStore: configStore,
-                launchAtLoginStore: launchAtLoginStore
+                launchAtLoginStore: launchAtLoginStore,
+                cleanupStore: cleanupStore
             )
             .frame(width: 420, height: 520)
             .onChange(of: configStore.telemetryEnabled) { enabled in

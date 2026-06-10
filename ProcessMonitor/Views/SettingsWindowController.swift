@@ -10,7 +10,8 @@ final class SettingsWindowController {
     func open(
         configStore: ProcessConfigStore,
         launchAtLoginStore: LaunchAtLoginStore,
-        diskMonitorService: DiskMonitorService
+        diskMonitorService: DiskMonitorService,
+        cleanupStore: CleanupStore
     ) {
         dismissMenuBarPopover()
         if let existing = window, existing.isVisible {
@@ -22,7 +23,8 @@ final class SettingsWindowController {
         let settingsView = SettingsView(
             configStore: configStore,
             launchAtLoginStore: launchAtLoginStore,
-            diskMonitorService: diskMonitorService
+            diskMonitorService: diskMonitorService,
+            cleanupStore: cleanupStore
         )
         let hostingView = NSHostingView(rootView: settingsView)
         hostingView.frame = NSRect(x: 0, y: 0, width: 700, height: 540)
