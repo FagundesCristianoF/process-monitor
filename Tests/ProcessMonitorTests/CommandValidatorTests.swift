@@ -28,6 +28,13 @@ final class CommandValidatorTests: XCTestCase {
         )
     }
 
+    func testRmRfHomeDollarSubpathPasses() {
+        XCTAssertEqual(
+            CommandValidator.validate("rm -rf $HOME/Library/Caches"),
+            .ok
+        )
+    }
+
     // MARK: - chmod / chown blocked
 
     func testChmodBlocked() {
