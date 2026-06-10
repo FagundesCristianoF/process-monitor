@@ -25,14 +25,16 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.4</string>
+    <string>1.4.1</string>
     <key>CFBundleVersion</key>
-    <string>6</string>
+    <string>7</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSUserNotificationUsageDescription</key>
+    <string>Process Monitor sends alerts when a process exceeds its memory limit or disk space runs low.</string>
 </dict>
 </plist>
