@@ -34,7 +34,7 @@ final class NotificationService: ObservableObject {
 
     func resetMemoryNotification(for definitionID: String) {
         queue.sync {
-            notifiedDefinitionIDs.remove(definitionID)
+            _ = notifiedDefinitionIDs.remove(definitionID)
         }
     }
 
