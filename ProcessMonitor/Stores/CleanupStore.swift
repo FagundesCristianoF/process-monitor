@@ -55,7 +55,10 @@ final class CleanupStore: ObservableObject {
     func run(id: UUID) {
         guard let cmd = commands.first(where: { $0.id == id }) else { return }
         guard runStates[id] != .running else { return }
-        setRunState(.running, for: id)
+        guard cmd.isEnabled else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.setRunState(.running, for: id)
+        }
         queue.async { [weak self] in
             let output = self?.execute(cmd.command) ?? ("", "")
             let combined = [output.0, output.1].filter { !$0.isEmpty }.joined(separator: "\n")
@@ -83,7 +86,9 @@ final class CleanupStore: ObservableObject {
             runAllSequentially(ids: Array(ids.dropFirst()))
             return
         }
-        setRunState(.running, for: first)
+        DispatchQueue.main.async { [weak self] in
+            self?.setRunState(.running, for: first)
+        }
         queue.async { [weak self] in
             let output = self?.execute(cmd.command) ?? ("", "")
             let combined = [output.0, output.1].filter { !$0.isEmpty }.joined(separator: "\n")
@@ -98,7 +103,7 @@ final class CleanupStore: ObservableObject {
         }
     }
 
-    /// Returns (stdout, stderr). Non-empty stderr → treat as failure.
+    /// Returns (stdout, ""). On non-zero exit, returns ("", combinedOutput).
     private func execute(_ command: String) -> (stdout: String, stderr: String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/zsh")
