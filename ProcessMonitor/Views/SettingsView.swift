@@ -90,7 +90,7 @@ private struct SidebarItemView: View {
     }
 }
 
-private struct DetailCard<Content: View>: View {
+struct DetailCard<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
@@ -108,7 +108,7 @@ private struct DetailCard<Content: View>: View {
     }
 }
 
-private struct DetailHeader: View {
+struct DetailHeader: View {
     let title: String
     var trailing: AnyView? = nil
 
