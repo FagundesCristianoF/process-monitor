@@ -1,6 +1,45 @@
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
+import UserNotifications
+
+// MARK: - Settings Tab
+
+enum SettingsTab: String, CaseIterable, Identifiable {
+    case processes, disk, preferences, privacy, about
+
+    var id: String { rawValue }
+
+    var localizedLabel: String {
+        switch self {
+        case .processes:  return NSLocalizedString("Processes", comment: "")
+        case .disk:       return NSLocalizedString("Disk", comment: "")
+        case .preferences:return NSLocalizedString("Preferences", comment: "")
+        case .privacy:    return NSLocalizedString("Privacy", comment: "")
+        case .about:      return NSLocalizedString("About", comment: "")
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .processes:   return "list.bullet.rectangle.fill"
+        case .disk:        return "internaldrive.fill"
+        case .preferences: return "gearshape.fill"
+        case .privacy:     return "lock.shield.fill"
+        case .about:       return "info.circle.fill"
+        }
+    }
+
+    var iconColor: Color {
+        switch self {
+        case .processes:   return Color(red: 0.20, green: 0.47, blue: 0.97)
+        case .disk:        return Color(red: 0.94, green: 0.58, blue: 0.14)
+        case .preferences: return Color(red: 0.56, green: 0.56, blue: 0.58)
+        case .privacy:     return Color(red: 0.13, green: 0.78, blue: 0.40)
+        case .about:       return Color(red: 0.56, green: 0.36, blue: 0.97)
+        }
+    }
+}
 
 // MARK: - Reusable Style Components
 
@@ -17,194 +56,215 @@ struct SettingsLabelStyle: LabelStyle {
     }
 }
 
-struct SettingsSection<Content: View>: View {
-    let title: String
-    let icon: String
-    var trailing: AnyView? = nil
-    @ViewBuilder let content: () -> Content
+private struct SidebarItemView: View {
+    let tab: SettingsTab
+    let isSelected: Bool
+    let action: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.tint)
-                Text(title)
-                    .font(.system(.caption, design: .rounded, weight: .semibold))
-                    .textCase(.uppercase)
-                    .tracking(0.6)
-                    .foregroundStyle(.secondary)
+        Button(action: action) {
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(tab.iconColor.gradient)
+                        .frame(width: 28, height: 28)
+                    Image(systemName: tab.icon)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .symbolRenderingMode(.monochrome)
+                }
+                Text(tab.localizedLabel)
+                    .font(.system(.callout))
+                    .foregroundStyle(.primary)
                 Spacer()
-                if let trailing { trailing }
             }
-            .padding(.horizontal, 4)
-
-            content()
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(.background.opacity(0.5))
-                )
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(.quaternary.opacity(0.3))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(.quaternary.opacity(0.6), lineWidth: 0.5)
-                )
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.clear)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
+        .buttonStyle(.plain)
     }
 }
 
-private struct LanguageOption: Identifiable, Hashable {
-    let id: String
-    let code: String?
-    let label: String
+private struct DetailCard<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            content()
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
+        )
+    }
 }
 
-private let supportedLanguages: [LanguageOption] = [
-    LanguageOption(id: "system", code: nil, label: "System default"),
-    LanguageOption(id: "en", code: "en", label: "English"),
-    LanguageOption(id: "pt-BR", code: "pt-BR", label: "Português (Brasil)"),
-    LanguageOption(id: "es", code: "es", label: "Español"),
-    LanguageOption(id: "fr", code: "fr", label: "Français"),
-    LanguageOption(id: "de", code: "de", label: "Deutsch")
+private struct DetailHeader: View {
+    let title: String
+    var trailing: AnyView? = nil
+
+    var body: some View {
+        HStack(alignment: .center) {
+            Text(title)
+                .font(.system(.title3, design: .rounded, weight: .semibold))
+            Spacer()
+            if let trailing { trailing }
+        }
+        .padding(.bottom, 2)
+    }
+}
+
+private let supportedLanguages: [(id: String, label: String)] = [
+    ("system",  "System default"),
+    ("en",      "English"),
+    ("pt-BR",   "Português (Brasil)"),
+    ("es",      "Español"),
+    ("fr",      "Français"),
+    ("de",      "Deutsch"),
 ]
 
 struct SettingsView: View {
     @ObservedObject var configStore: ProcessConfigStore
     @ObservedObject var launchAtLoginStore: LaunchAtLoginStore
+    @ObservedObject var diskMonitorService: DiskMonitorService
+
+    @State private var selectedTab: SettingsTab = .processes
     @State private var showAddForm = false
     @State private var showAddDiskForm = false
     @State private var showRestartAlert = false
     @State private var pollIntervalDraft: Double = ProcessConfigStore.defaultPollInterval
+    @State private var notifAuthStatus: UNAuthorizationStatus = .notDetermined
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                processesSection
-                diskSection
-                preferencesSection
-                privacySection
-                aboutSection
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 18)
+        HStack(spacing: 0) {
+            sidebar
+            Divider()
+            detailPane
         }
-        .frame(minWidth: 460, minHeight: 560)
-        .background(.regularMaterial)
-        .onAppear { pollIntervalDraft = configStore.pollIntervalSeconds }
+        .frame(minWidth: 680, idealWidth: 700, minHeight: 460)
+        .onAppear {
+            pollIntervalDraft = configStore.pollIntervalSeconds
+            refreshNotifStatus()
+        }
         .sheet(isPresented: $showAddForm) {
-            AddProcessView { definition in
-                configStore.addDefinition(definition)
-            }
+            AddProcessView { configStore.addDefinition($0) }
         }
         .sheet(isPresented: $showAddDiskForm) {
-            AddDiskVolumeView { volume in
-                configStore.addDiskVolume(volume)
-            }
+            AddDiskVolumeView { configStore.addDiskVolume($0) }
         }
-        .alert(
-            "Restart required",
-            isPresented: $showRestartAlert,
-            actions: {
-                Button("Restart now", role: .destructive) { Self.relaunch() }
-                Button("Later", role: .cancel) {}
-            },
-            message: {
-                Text("Process Monitor needs to restart to apply the new language.")
-            }
-        )
+        .alert("Restart required", isPresented: $showRestartAlert, actions: {
+            Button("Restart now", role: .destructive) { Self.relaunch() }
+            Button("Later", role: .cancel) {}
+        }, message: {
+            Text("Process Monitor needs to restart to apply the new language.")
+        })
     }
 
-    // MARK: - Processes Section
+    // MARK: - Sidebar
 
-    private var processesSection: some View {
-        SettingsSection(
-            title: NSLocalizedString("Monitored Processes", comment: ""),
-            icon: "list.bullet.rectangle.fill",
-            trailing: AnyView(
-                Button(action: { showAddForm = true }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 10, weight: .bold))
-                        Text("Add")
-                            .font(.system(.caption, design: .rounded, weight: .semibold))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(
-                        Capsule().fill(
-                            LinearGradient(
-                                colors: [.accentColor, .accentColor.opacity(0.85)],
-                                startPoint: .top, endPoint: .bottom
-                            )
-                        )
-                    )
-                    .foregroundStyle(.white)
-                    .shadow(color: .accentColor.opacity(0.3), radius: 3, y: 1)
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(SettingsTab.allCases) { tab in
+                SidebarItemView(
+                    tab: tab,
+                    isSelected: selectedTab == tab
+                ) {
+                    withAnimation(.easeOut(duration: 0.12)) { selectedTab = tab }
                 }
-                .buttonStyle(.plain)
-                .help("Add a process to monitor")
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 16)
+        .padding(.bottom, 12)
+        .frame(minWidth: 190, idealWidth: 190, maxWidth: 190)
+        .background(Color(nsColor: .controlBackgroundColor))
+    }
+
+    // MARK: - Detail Pane
+
+    @ViewBuilder
+    private var detailPane: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                switch selectedTab {
+                case .processes:   processesDetail
+                case .disk:        diskDetail
+                case .preferences: preferencesDetail
+                case .privacy:     privacyDetail
+                case .about:       aboutDetail
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 20)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .id(selectedTab)
+        .frame(minWidth: 460, maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    // MARK: - Processes Detail
+
+    private var processesDetail: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            DetailHeader(
+                title: NSLocalizedString("Monitored Processes", comment: ""),
+                trailing: AnyView(addButton { showAddForm = true })
             )
-        ) {
-            VStack(spacing: 0) {
-                ForEach(configStore.definitions) { def in
-                    DefinitionRow(
-                        definition: def,
-                        currentLimit: configStore.limit(for: def.id),
-                        autoRestartLimit: configStore.autoRestartLimit(for: def.id),
-                        onLimitChanged: { configStore.setLimit($0, for: def.id) },
-                        onAutoRestartChanged: { configStore.setAutoRestartLimit($0, for: def.id) },
-                        onRemove: { configStore.removeDefinition(id: def.id) }
-                    )
-                    if def.id != configStore.definitions.last?.id {
-                        Divider().opacity(0.5).padding(.horizontal, 14)
+
+            if configStore.definitions.isEmpty {
+                emptyState(
+                    icon: "list.bullet.rectangle",
+                    message: "No processes monitored.",
+                    detail: "Tap + to add a process."
+                )
+            } else {
+                DetailCard {
+                    ForEach(configStore.definitions) { def in
+                        DefinitionRow(
+                            definition: def,
+                            currentLimit: configStore.limit(for: def.id),
+                            autoRestartLimit: configStore.autoRestartLimit(for: def.id),
+                            onLimitChanged: { configStore.setLimit($0, for: def.id) },
+                            onAutoRestartChanged: { configStore.setAutoRestartLimit($0, for: def.id) },
+                            onRemove: { configStore.removeDefinition(id: def.id) }
+                        )
+                        if def.id != configStore.definitions.last?.id {
+                            Divider().opacity(0.4).padding(.horizontal, 14)
+                        }
                     }
                 }
             }
         }
     }
 
-    // MARK: - Disk Section
+    // MARK: - Disk Detail
 
-    private var diskSection: some View {
-        SettingsSection(
-            title: NSLocalizedString("Disk Monitoring", comment: ""),
-            icon: "internaldrive.fill",
-            trailing: AnyView(
-                Button(action: { showAddDiskForm = true }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 10, weight: .bold))
-                        Text("Add")
-                            .font(.system(.caption, design: .rounded, weight: .semibold))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(
-                        Capsule().fill(
-                            LinearGradient(
-                                colors: [.accentColor, .accentColor.opacity(0.85)],
-                                startPoint: .top, endPoint: .bottom
-                            )
-                        )
-                    )
-                    .foregroundStyle(.white)
-                    .shadow(color: .accentColor.opacity(0.3), radius: 3, y: 1)
-                }
-                .buttonStyle(.plain)
-                .help(NSLocalizedString("Add a volume to monitor", comment: "Add disk volume button tooltip"))
+    private var diskDetail: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            DetailHeader(
+                title: NSLocalizedString("Disk Monitoring", comment: ""),
+                trailing: AnyView(addButton { showAddDiskForm = true })
             )
-        ) {
-            VStack(spacing: 0) {
-                if configStore.diskVolumes.isEmpty {
-                    Text(NSLocalizedString("No volumes monitored.", comment: "Empty state for disk monitoring"))
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .padding(14)
-                } else {
+
+            if configStore.diskVolumes.isEmpty {
+                emptyState(
+                    icon: "internaldrive",
+                    message: "No volumes monitored.",
+                    detail: "Tap + to add a volume."
+                )
+            } else {
+                DetailCard {
                     ForEach(configStore.diskVolumes) { volume in
                         DiskVolumeSettingsRow(
                             volume: volume,
@@ -212,7 +272,7 @@ struct SettingsView: View {
                             onRemove: { configStore.removeDiskVolume(id: volume.id) }
                         )
                         if volume.id != configStore.diskVolumes.last?.id {
-                            Divider().opacity(0.5).padding(.horizontal, 14)
+                            Divider().opacity(0.4).padding(.horizontal, 14)
                         }
                     }
                 }
@@ -220,21 +280,20 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Preferences
+    // MARK: - Preferences Detail
 
-    private var preferencesSection: some View {
-        SettingsSection(
-            title: NSLocalizedString("Preferences", comment: ""),
-            icon: "slider.horizontal.3"
-        ) {
-            VStack(spacing: 0) {
+    private var preferencesDetail: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            DetailHeader(title: NSLocalizedString("Preferences", comment: ""))
+
+            DetailCard {
                 settingsRow {
                     HStack {
                         Label("Language", systemImage: "globe")
                             .labelStyle(SettingsLabelStyle())
                         Spacer()
                         Picker("", selection: languageBinding) {
-                            ForEach(supportedLanguages) { lang in
+                            ForEach(supportedLanguages, id: \.id) { lang in
                                 Text(lang.label).tag(lang.id)
                             }
                         }
@@ -242,7 +301,7 @@ struct SettingsView: View {
                         .frame(width: 200)
                     }
                 }
-                Divider().opacity(0.5).padding(.horizontal, 14)
+                Divider().opacity(0.4).padding(.horizontal, 14)
                 settingsRow {
                     HStack {
                         Label("Launch at login", systemImage: "power.circle")
@@ -258,7 +317,7 @@ struct SettingsView: View {
                     }
                 }
                 if let statusMessage = launchAtLoginStore.statusMessage {
-                    HStack {
+                    HStack(spacing: 6) {
                         Image(systemName: "info.circle")
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
@@ -270,7 +329,22 @@ struct SettingsView: View {
                     .padding(.horizontal, 14)
                     .padding(.bottom, 8)
                 }
-                Divider().opacity(0.5).padding(.horizontal, 14)
+                Divider().opacity(0.4).padding(.horizontal, 14)
+                settingsRow {
+                    HStack {
+                        Label(NSLocalizedString("Notifications", comment: ""), systemImage: "bell.badge")
+                            .labelStyle(SettingsLabelStyle())
+                        Spacer()
+                        notifStatusBadge
+                        Button(NSLocalizedString("Open Settings", comment: "")) {
+                            openNotificationSettings()
+                        }
+                        .font(.system(.caption, design: .rounded, weight: .medium))
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                Divider().opacity(0.4).padding(.horizontal, 14)
                 settingsRow {
                     HStack(spacing: 12) {
                         Label("Refresh every", systemImage: "clock.arrow.circlepath")
@@ -294,14 +368,13 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Privacy
+    // MARK: - Privacy Detail
 
-    private var privacySection: some View {
-        SettingsSection(
-            title: NSLocalizedString("Privacy", comment: ""),
-            icon: "lock.shield.fill"
-        ) {
-            VStack(spacing: 0) {
+    private var privacyDetail: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            DetailHeader(title: NSLocalizedString("Privacy", comment: ""))
+
+            DetailCard {
                 settingsRow {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
@@ -319,7 +392,7 @@ struct SettingsView: View {
                             .padding(.leading, 22)
                     }
                 }
-                Divider().opacity(0.5).padding(.horizontal, 14)
+                Divider().opacity(0.4).padding(.horizontal, 14)
                 settingsRow {
                     HStack {
                         Label("Reset to Defaults", systemImage: "arrow.counterclockwise.circle")
@@ -340,39 +413,44 @@ struct SettingsView: View {
         }
     }
 
-    private var aboutSection: some View {
-        SettingsSection(
-            title: NSLocalizedString("About", comment: "About section title"),
-            icon: "info.circle.fill"
-        ) {
-            VStack(spacing: 0) {
-                settingsRow {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Process Monitor")
-                                .font(.callout.weight(.medium))
-                            Text(String(
-                                format: NSLocalizedString("Version %@", comment: "App version label"),
-                                AppInfo.displayVersion
-                            ))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                        }
-                        Spacer()
-                    }
+    // MARK: - About Detail
+
+    private var aboutDetail: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            DetailHeader(title: NSLocalizedString("About", comment: ""))
+
+            HStack(spacing: 16) {
+                if let icon = NSApp.applicationIconImage {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 64, height: 64)
                 }
-                Divider().opacity(0.5).padding(.horizontal, 14)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Process Monitor")
+                        .font(.system(.title3, design: .rounded, weight: .semibold))
+                    Text(String(
+                        format: NSLocalizedString("Version %@", comment: ""),
+                        AppInfo.displayVersion
+                    ))
+                    .font(.system(.callout, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                }
+            }
+            .padding(.bottom, 4)
+
+            DetailCard {
                 settingsRow {
                     HStack(spacing: 8) {
                         Link(destination: AppInfo.bugReportURL) {
-                            Label(NSLocalizedString("Report a bug", comment: "Bug report link"), systemImage: "ladybug")
-                                .font(.system(.caption, design: .rounded, weight: .medium))
+                            Label(NSLocalizedString("Report a bug", comment: ""), systemImage: "ladybug")
+                                .font(.system(.callout, design: .rounded, weight: .medium))
                         }
                         Spacer()
                         Link(destination: AppInfo.repositoryURL) {
-                            Label(NSLocalizedString("View on GitHub", comment: "GitHub repository link"), systemImage: "arrow.up.right.square")
-                                .font(.system(.caption, design: .rounded, weight: .medium))
+                            Label(NSLocalizedString("View on GitHub", comment: ""), systemImage: "arrow.up.right.square")
+                                .font(.system(.callout, design: .rounded, weight: .medium))
                         }
                     }
                     .foregroundStyle(.secondary)
@@ -381,10 +459,99 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Helpers
+
+    private func addButton(action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: "plus")
+                    .font(.system(size: 10, weight: .bold))
+                Text("Add")
+                    .font(.system(.caption, design: .rounded, weight: .semibold))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .background(
+                Capsule().fill(
+                    LinearGradient(
+                        colors: [.accentColor, .accentColor.opacity(0.85)],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                )
+            )
+            .foregroundStyle(.white)
+            .shadow(color: .accentColor.opacity(0.3), radius: 3, y: 1)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func emptyState(icon: String, message: String, detail: String) -> some View {
+        HStack {
+            Spacer()
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 28, weight: .light))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.tertiary)
+                Text(message)
+                    .font(.system(.callout, design: .rounded, weight: .medium))
+                    .foregroundStyle(.secondary)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.vertical, 24)
+            Spacer()
+        }
+    }
+
     private func settingsRow<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         content()
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
+    }
+
+    @ViewBuilder
+    private var notifStatusBadge: some View {
+        switch notifAuthStatus {
+        case .authorized, .provisional:
+            Label(NSLocalizedString("Allowed", comment: ""), systemImage: "checkmark.circle.fill")
+                .font(.caption2)
+                .foregroundStyle(.green)
+                .labelStyle(.titleAndIcon)
+        case .denied:
+            Label(NSLocalizedString("Denied", comment: ""), systemImage: "xmark.circle.fill")
+                .font(.caption2)
+                .foregroundStyle(.red)
+                .labelStyle(.titleAndIcon)
+        default:
+            Label(NSLocalizedString("Not set", comment: ""), systemImage: "questionmark.circle")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .labelStyle(.titleAndIcon)
+        }
+    }
+
+    private func refreshNotifStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async { notifAuthStatus = settings.authorizationStatus }
+        }
+    }
+
+    private func openNotificationSettings() {
+        let alert = NSAlert()
+        alert.messageText = NSLocalizedString("Enable Notifications", comment: "")
+        alert.informativeText = NSLocalizedString(
+            "Process Monitor needs notification permission to alert you about memory and disk usage. You can enable it in System Settings → Notifications → Process Monitor.",
+            comment: ""
+        )
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: NSLocalizedString("Open System Settings", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("Cancel", comment: ""))
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private var languageBinding: Binding<String> {
@@ -404,9 +571,7 @@ struct SettingsView: View {
         let config = NSWorkspace.OpenConfiguration()
         config.createsNewApplicationInstance = true
         NSWorkspace.shared.openApplication(at: bundleURL, configuration: config) { _, _ in
-            DispatchQueue.main.async {
-                NSApplication.shared.terminate(nil)
-            }
+            DispatchQueue.main.async { NSApplication.shared.terminate(nil) }
         }
     }
 }
@@ -427,7 +592,7 @@ private struct DefinitionRow: View {
     @State private var autoRestartMB: Double = 0
 
     private static let minMB: Double = 64
-    private static let maxMB: Double = 32768 // 32 GB
+    private static let maxMB: Double = 32768
     private static let stepMB: Double = 64
 
     var body: some View {
@@ -438,7 +603,6 @@ private struct DefinitionRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(definition.displayName)
                         .font(.system(.callout, weight: .semibold))
-
                     Text(definition.patterns.joined(separator: " · "))
                         .font(.system(.caption2, design: .monospaced))
                         .foregroundStyle(.tertiary)
@@ -453,9 +617,7 @@ private struct DefinitionRow: View {
                     .monospacedDigit()
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(
-                        Capsule().fill(.quaternary.opacity(0.5))
-                    )
+                    .background(Capsule().fill(.quaternary.opacity(0.5)))
                     .foregroundStyle(.secondary)
 
                 Button(action: { showConfirmRemove = true }) {
@@ -468,15 +630,13 @@ private struct DefinitionRow: View {
                 .buttonStyle(.plain)
                 .help("Remove from monitoring")
                 .alert(
-                    String(format: NSLocalizedString("Remove %@?", comment: "Remove process confirmation title"), definition.displayName),
+                    String(format: NSLocalizedString("Remove %@?", comment: ""), definition.displayName),
                     isPresented: $showConfirmRemove,
                     actions: {
                         Button("Cancel", role: .cancel) {}
                         Button("Remove", role: .destructive, action: onRemove)
                     },
-                    message: {
-                        Text("This process will no longer be monitored.")
-                    }
+                    message: { Text("This process will no longer be monitored.") }
                 )
             }
 
@@ -484,14 +644,14 @@ private struct DefinitionRow: View {
                 limitSliderRow(
                     iconColor: .orange,
                     icon: "exclamationmark.triangle.fill",
-                    label: NSLocalizedString("Warn at", comment: "Warning threshold label"),
+                    label: NSLocalizedString("Warn at", comment: ""),
                     value: $limitMB,
                     onChange: { onLimitChanged(Int($0)) }
                 )
 
                 if definition.isRestartable {
                     HStack(spacing: 8) {
-                        Label(NSLocalizedString("Auto-restart", comment: "Auto-restart toggle"), systemImage: "arrow.triangle.2.circlepath")
+                        Label(NSLocalizedString("Auto-restart", comment: ""), systemImage: "arrow.triangle.2.circlepath")
                             .labelStyle(SettingsLabelStyle())
                             .font(.caption)
                         Spacer()
@@ -522,7 +682,7 @@ private struct DefinitionRow: View {
                         limitSliderRow(
                             iconColor: .red,
                             icon: "arrow.triangle.2.circlepath",
-                            label: NSLocalizedString("Restart at", comment: "Auto-restart threshold label"),
+                            label: NSLocalizedString("Restart at", comment: ""),
                             value: $autoRestartMB,
                             onChange: { onAutoRestartChanged(Int($0)) }
                         )
@@ -614,7 +774,7 @@ private struct DiskVolumeSettingsRow: View {
                         .frame(width: 22, height: 22)
                 }
                 .buttonStyle(.plain)
-                .help(NSLocalizedString("Remove volume", comment: "Remove disk volume button tooltip"))
+                .help(NSLocalizedString("Remove volume", comment: ""))
                 .alert(
                     String(format: NSLocalizedString("Remove %@?", comment: ""), volume.displayName),
                     isPresented: $showConfirmRemove,
@@ -622,7 +782,7 @@ private struct DiskVolumeSettingsRow: View {
                         Button("Cancel", role: .cancel) {}
                         Button("Remove", role: .destructive, action: onRemove)
                     },
-                    message: { Text(NSLocalizedString("This volume will no longer be monitored.", comment: "Disk volume removal alert message")) }
+                    message: { Text(NSLocalizedString("This volume will no longer be monitored.", comment: "")) }
                 )
             }
 
@@ -746,7 +906,7 @@ private struct AddDiskVolumeView: View {
                     .font(.system(size: 16))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.tint)
-                Text(NSLocalizedString("Add Volume", comment: "Add disk volume sheet title"))
+                Text(NSLocalizedString("Add Volume", comment: ""))
                     .font(.system(.headline, design: .rounded, weight: .semibold))
                 Spacer()
             }
@@ -757,7 +917,7 @@ private struct AddDiskVolumeView: View {
 
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Label(NSLocalizedString("Volume", comment: "Disk volume picker label"), systemImage: "internaldrive")
+                    Label(NSLocalizedString("Volume", comment: ""), systemImage: "internaldrive")
                         .labelStyle(SettingsLabelStyle())
                         .font(.system(.caption, weight: .semibold))
                     Picker("", selection: $selectedPath) {
@@ -774,15 +934,15 @@ private struct AddDiskVolumeView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Label(NSLocalizedString("Display Name", comment: "Volume display name label"), systemImage: "textformat")
+                    Label(NSLocalizedString("Display Name", comment: ""), systemImage: "textformat")
                         .labelStyle(SettingsLabelStyle())
                         .font(.system(.caption, weight: .semibold))
-                    TextField(NSLocalizedString("e.g. Macintosh HD", comment: "Volume display name placeholder"), text: $displayName)
+                    TextField(NSLocalizedString("e.g. Macintosh HD", comment: ""), text: $displayName)
                         .textFieldStyle(.roundedBorder)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Label(NSLocalizedString("Alert Thresholds", comment: "Disk alert thresholds section label"), systemImage: "bell.badge")
+                    Label(NSLocalizedString("Alert Thresholds", comment: ""), systemImage: "bell.badge")
                         .labelStyle(SettingsLabelStyle())
                         .font(.system(.caption, weight: .semibold))
 
@@ -791,7 +951,7 @@ private struct AddDiskVolumeView: View {
                             .labelsHidden()
                             .toggleStyle(.switch)
                             .controlSize(.mini)
-                        Text(NSLocalizedString("Free space below", comment: "Disk threshold label (percent)"))
+                        Text(NSLocalizedString("Free space below", comment: ""))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         Slider(value: $thresholdPercent, in: 1...50, step: 1)
@@ -809,7 +969,7 @@ private struct AddDiskVolumeView: View {
                             .labelsHidden()
                             .toggleStyle(.switch)
                             .controlSize(.mini)
-                        Text(NSLocalizedString("Free space below", comment: "Disk threshold label (GB)"))
+                        Text(NSLocalizedString("Free space below", comment: ""))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         Slider(value: $thresholdGB, in: 1...500, step: 1)
@@ -829,11 +989,11 @@ private struct AddDiskVolumeView: View {
             Divider().opacity(0.5)
 
             HStack {
-                Button(NSLocalizedString("Cancel", comment: "Cancel button")) { dismiss() }
+                Button(NSLocalizedString("Cancel", comment: "")) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                     .controlSize(.large)
                 Spacer()
-                Button(NSLocalizedString("Add", comment: "Add disk volume button")) { addVolume() }
+                Button(NSLocalizedString("Add", comment: "")) { addVolume() }
                     .keyboardShortcut(.defaultAction)
                     .controlSize(.large)
                     .buttonStyle(.borderedProminent)
@@ -910,10 +1070,7 @@ private struct AddProcessView: View {
             VStack(alignment: .leading, spacing: 18) {
                 appPickerRow
 
-                fieldGroup(
-                    label: NSLocalizedString("Display Name", comment: ""),
-                    icon: "textformat"
-                ) {
+                fieldGroup(label: NSLocalizedString("Display Name", comment: ""), icon: "textformat") {
                     TextField("e.g. Docker", text: $displayName)
                         .textFieldStyle(.roundedBorder)
                 }
@@ -928,25 +1085,13 @@ private struct AddProcessView: View {
                         .font(.system(.body, design: .monospaced))
                 }
 
-                fieldGroup(
-                    label: NSLocalizedString("Memory Limit", comment: ""),
-                    icon: "memorychip"
-                ) {
+                fieldGroup(label: NSLocalizedString("Memory Limit", comment: ""), icon: "memorychip") {
                     VStack(spacing: 6) {
                         HStack {
-                            Slider(
-                                value: $limitMB,
-                                in: Self.minMB...Self.maxMB,
-                                step: Self.stepMB
-                            )
-                            Stepper(
-                                "",
-                                value: $limitMB,
-                                in: Self.minMB...Self.maxMB,
-                                step: Self.stepMB
-                            )
-                            .labelsHidden()
-                            .controlSize(.mini)
+                            Slider(value: $limitMB, in: Self.minMB...Self.maxMB, step: Self.stepMB)
+                            Stepper("", value: $limitMB, in: Self.minMB...Self.maxMB, step: Self.stepMB)
+                                .labelsHidden()
+                                .controlSize(.mini)
                         }
                         HStack {
                             Spacer()
@@ -955,9 +1100,7 @@ private struct AddProcessView: View {
                                 .monospacedDigit()
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 3)
-                                .background(
-                                    Capsule().fill(.tint.opacity(0.15))
-                                )
+                                .background(Capsule().fill(.tint.opacity(0.15)))
                                 .foregroundStyle(.tint)
                         }
                     }
@@ -1094,15 +1237,11 @@ private struct AddProcessView: View {
         let path = url.path
         selectedAppPath = path
         selectedAppIcon = NSWorkspace.shared.icon(forFile: path)
-
         let bundle = Bundle(url: url)
         let bundleName = bundle?.infoDictionary?["CFBundleName"] as? String
             ?? bundle?.infoDictionary?["CFBundleDisplayName"] as? String
         let appFileName = url.deletingPathExtension().lastPathComponent
-
-        if displayName.isEmpty {
-            displayName = bundleName ?? appFileName
-        }
+        if displayName.isEmpty { displayName = bundleName ?? appFileName }
         let patternCandidate = "\(appFileName).app"
         if patternsText.isEmpty {
             patternsText = patternCandidate
@@ -1117,11 +1256,9 @@ private struct AddProcessView: View {
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-
         let id = name.lowercased()
             .replacingOccurrences(of: " ", with: "_")
             .filter { $0.isLetter || $0.isNumber || $0 == "_" }
-
         let definition = ProcessDefinition(
             id: id,
             displayName: name,

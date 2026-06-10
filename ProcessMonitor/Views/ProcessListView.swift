@@ -226,7 +226,8 @@ struct ProcessListView: View {
                     action: {
                         SettingsWindowController.shared.open(
                             configStore: configStore,
-                            launchAtLoginStore: launchAtLoginStore
+                            launchAtLoginStore: launchAtLoginStore,
+                            diskMonitorService: diskMonitorService
                         )
                     }
                 )

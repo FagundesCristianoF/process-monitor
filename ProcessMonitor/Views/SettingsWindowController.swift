@@ -9,7 +9,8 @@ final class SettingsWindowController {
 
     func open(
         configStore: ProcessConfigStore,
-        launchAtLoginStore: LaunchAtLoginStore
+        launchAtLoginStore: LaunchAtLoginStore,
+        diskMonitorService: DiskMonitorService
     ) {
         dismissMenuBarPopover()
         if let existing = window, existing.isVisible {
@@ -20,13 +21,14 @@ final class SettingsWindowController {
 
         let settingsView = SettingsView(
             configStore: configStore,
-            launchAtLoginStore: launchAtLoginStore
+            launchAtLoginStore: launchAtLoginStore,
+            diskMonitorService: diskMonitorService
         )
         let hostingView = NSHostingView(rootView: settingsView)
-        hostingView.frame = NSRect(x: 0, y: 0, width: 500, height: 600)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 700, height: 540)
 
         let newWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 600),
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 540),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
@@ -36,9 +38,10 @@ final class SettingsWindowController {
         newWindow.titleVisibility = .visible
         newWindow.isMovableByWindowBackground = false
         newWindow.contentView = hostingView
+        newWindow.minSize = NSSize(width: 680, height: 460)
         newWindow.center()
         newWindow.isReleasedWhenClosed = false
-        newWindow.level = .floating
+        newWindow.level = .normal
         newWindow.makeKeyAndOrderFront(nil)
 
         NSApp.activate(ignoringOtherApps: true)
