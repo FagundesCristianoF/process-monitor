@@ -62,7 +62,7 @@ struct StorageCleanerView: View {
     private var runAllButton: some View {
         Button(action: { store.runAll() }) {
             HStack(spacing: 4) {
-                Image(systemName: store.isAnyRunning ? "stop.circle" : "play.circle")
+                Image(systemName: "play.circle")
                     .font(.system(size: 10, weight: .bold))
                 Text("Run All")
                     .font(.system(.caption, design: .rounded, weight: .semibold))
@@ -259,6 +259,7 @@ private struct CleanupCommandRow: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .onChange(of: runState) { newState in
+            if case .running = newState { outputExpanded = false }
             if case .failure = newState { outputExpanded = true }
             if case .success = newState { outputExpanded = false }
         }
@@ -411,6 +412,8 @@ private struct CleanupCommandEditSheet: View {
             if case .edit(let cmd) = mode {
                 name = cmd.name
                 command = cmd.command
+                let result = CommandValidator.validate(cmd.command)
+                if case .blocked(let reason) = result { validationError = reason }
             }
         }
     }
