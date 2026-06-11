@@ -2,7 +2,10 @@ import Foundation
 import UserNotifications
 
 final class NotificationService: ObservableObject {
+    static let notificationCooldown: TimeInterval = 900 // 15 min between notifications per definition
+
     private var notifiedDefinitionIDs: Set<String> = []
+    private var lastNotifiedAt: [String: Date] = [:]
     private var permissionGranted = false
     private let queue = DispatchQueue(label: "NotificationService.state")
 
@@ -11,7 +14,7 @@ final class NotificationService: ObservableObject {
     func requestPermissionIfNeeded() {
         guard Bundle.main.bundleIdentifier != nil else { return }
         UNUserNotificationCenter.current().requestAuthorization(
-            options: [.alert, .sound]
+            options: [.alert]
         ) { [weak self] granted, error in
             if let error {
                 print("Notification permission error: \(error.localizedDescription)")
@@ -22,9 +25,15 @@ final class NotificationService: ObservableObject {
 
     func notifyIfNeeded(processName: String, memoryMB: Double, limitMB: Int, definitionID: String) {
         var shouldSend = false
+        let now = Date()
         queue.sync {
-            if !notifiedDefinitionIDs.contains(definitionID) {
+            let alreadyNotified = notifiedDefinitionIDs.contains(definitionID)
+            let withinCooldown = lastNotifiedAt[definitionID].map {
+                now.timeIntervalSince($0) < Self.notificationCooldown
+            } ?? false
+            if !alreadyNotified && !withinCooldown {
                 notifiedDefinitionIDs.insert(definitionID)
+                lastNotifiedAt[definitionID] = now
                 shouldSend = true
             }
         }
@@ -59,8 +68,6 @@ final class NotificationService: ObservableObject {
             formatMemory(memoryMB),
             formatMemory(Double(limitMB))
         )
-        content.sound = .default
-
         let request = UNNotificationRequest(
             identifier: "mem_\(processName)_\(Date().timeIntervalSince1970)",
             content: content,
@@ -91,7 +98,6 @@ final class NotificationService: ObservableObject {
             formatDiskGB(status.freeGB),
             String(format: "%.1f%%", status.freePercent)
         )
-        content.sound = .default
         let request = UNNotificationRequest(
             identifier: "disk_\(status.volume.id)_\(Date().timeIntervalSince1970)",
             content: content,
@@ -114,7 +120,6 @@ final class NotificationService: ObservableObject {
             formatMemory(memoryMB),
             formatMemory(Double(limitMB))
         )
-        content.sound = .default
         let request = UNNotificationRequest(
             identifier: "autorestart_\(processName)_\(Date().timeIntervalSince1970)",
             content: content,

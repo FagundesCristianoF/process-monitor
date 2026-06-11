@@ -14,9 +14,11 @@ final class ProcessMonitorService: ObservableObject {
 
     static let historyLength = 60
     static let autoRestartCooldown: TimeInterval = 300 // 5 min between auto-restarts per process
+    static let belowLimitTicksRequired = 3 // ticks below limit before notification resets
     private var memoryHistory: [String: [Double]] = [:]
     private var cpuHistory: [String: [Double]] = [:]
     private var lastAutoRestartAt: [String: Date] = [:]
+    private var belowLimitTickCount: [String: Int] = [:]
 
     // CPU sampling state for native libproc-based sampling.
     private var previousCPUTotals: [pid_t: UInt64] = [:]
@@ -507,10 +509,16 @@ final class ProcessMonitorService: ObservableObject {
         let now = Date()
         for process in processes {
             if process.status != .overLimit {
-                // Process dropped below limit — reset so it can notify again on next spike
-                notificationService.resetMemoryNotification(for: process.definition.id)
+                let id = process.definition.id
+                let ticks = (belowLimitTickCount[id] ?? 0) + 1
+                belowLimitTickCount[id] = ticks
+                if ticks >= Self.belowLimitTicksRequired {
+                    belowLimitTickCount[id] = 0
+                    notificationService.resetMemoryNotification(for: id)
+                }
                 continue
             }
+            belowLimitTickCount[process.definition.id] = 0
 
             notificationService.notifyIfNeeded(
                 processName: process.definition.displayName,
