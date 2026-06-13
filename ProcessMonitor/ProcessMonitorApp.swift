@@ -25,6 +25,7 @@ struct ProcessMonitorApp: App {
     @StateObject private var monitorService: ProcessMonitorService
     @StateObject private var diskMonitorService: DiskMonitorService
     @StateObject private var cleanupStore: CleanupStore
+    @StateObject private var updaterService: UpdaterService
 
     init() {
         let config = ProcessConfigStore()
@@ -41,12 +42,14 @@ struct ProcessMonitorApp: App {
             notificationService: notifications
         )
         let cleanup = CleanupStore()
+        let updater = UpdaterService()
         _configStore = StateObject(wrappedValue: config)
         _launchAtLoginStore = StateObject(wrappedValue: launchAtLogin)
         _notificationService = StateObject(wrappedValue: notifications)
         _monitorService = StateObject(wrappedValue: monitor)
         _diskMonitorService = StateObject(wrappedValue: diskMonitor)
         _cleanupStore = StateObject(wrappedValue: cleanup)
+        _updaterService = StateObject(wrappedValue: updater)
         launchAtLogin.ensureRegistered()
         DispatchQueue.main.async {
             notifications.requestPermissionIfNeeded()

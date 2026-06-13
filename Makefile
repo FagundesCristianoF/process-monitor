@@ -1,4 +1,4 @@
-.PHONY: build run clean bundle release export notarize install uninstall identities dev
+.PHONY: build run clean bundle release export notarize appcast install uninstall identities dev
 
 APP_NAME = Process Monitor
 BUNDLE_NAME = ProcessMonitor.app
@@ -8,6 +8,14 @@ EXPORT_DIR = export
 TEAM_ID = VP83767PVX
 XCSTRINGS = ProcessMonitor/Resources/Localizable.xcstrings
 RESOURCE_BUNDLE = ProcessMonitor_ProcessMonitor.bundle
+# Sparkle framework source (resolved by `swift build`). Verify with:
+#   find .build/artifacts -name Sparkle.framework -type d
+SPARKLE_FRAMEWORK = .build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework
+# Framework version dir letter (e.g. B), derived so a Sparkle bump can't break signing paths.
+SPARKLE_VER = $(shell readlink "$(SPARKLE_FRAMEWORK)/Versions/Current" 2>/dev/null)
+# generate_appcast lives alongside generate_keys in the Sparkle artifact bin dir.
+# Verify with: find .build/artifacts -name generate_appcast -type f
+GENERATE_APPCAST = $(shell find .build/artifacts -name generate_appcast -type f | head -1)
 
 # Keychain profile name for notarytool (created via: xcrun notarytool store-credentials)
 NOTARY_PROFILE ?= ProcessMonitor
@@ -28,6 +36,8 @@ bundle: build
 	cp ProcessMonitor/Resources/AppIcon.icns "$(BUNDLE_NAME)/Contents/Resources/AppIcon.icns"
 	rm -f "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)/Localizable.xcstrings"
 	xcrun xcstringstool compile --output-directory "$(BUNDLE_NAME)/Contents/Resources" "$(XCSTRINGS)"
+	mkdir -p "$(BUNDLE_NAME)/Contents/Frameworks"
+	cp -R "$(SPARKLE_FRAMEWORK)" "$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework"
 	codesign --force --deep --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" "$(BUNDLE_NAME)"
 
 run: bundle
@@ -37,6 +47,7 @@ release:
 	swift build -c release --arch arm64 --arch x86_64
 
 export: release
+	@test -n "$(SPARKLE_VER)" || (echo "SPARKLE_VER empty (Sparkle.framework not resolved); run 'swift build' first." && exit 1)
 	rm -rf "$(EXPORT_DIR)" "$(BUNDLE_NAME)"
 	mkdir -p "$(BUNDLE_NAME)/Contents/MacOS"
 	mkdir -p "$(BUNDLE_NAME)/Contents/Resources"
@@ -47,7 +58,19 @@ export: release
 	rm -f "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)/Localizable.xcstrings"
 	xcrun xcstringstool compile --output-directory "$(BUNDLE_NAME)/Contents/Resources" "$(XCSTRINGS)"
 	strip "$(BUNDLE_NAME)/Contents/MacOS/ProcessMonitor"
-	codesign --force --deep --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" "$(BUNDLE_NAME)"
+	mkdir -p "$(BUNDLE_NAME)/Contents/Frameworks"
+	cp -R "$(SPARKLE_FRAMEWORK)" "$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework"
+	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
+		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/$(SPARKLE_VER)/XPCServices/Installer.xpc"
+	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
+		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/$(SPARKLE_VER)/XPCServices/Downloader.xpc"
+	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
+		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/$(SPARKLE_VER)/Autoupdate"
+	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
+		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/$(SPARKLE_VER)/Updater.app"
+	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
+		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework"
+	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" "$(BUNDLE_NAME)"
 	mkdir -p "$(EXPORT_DIR)"
 	ditto -c -k --keepParent "$(BUNDLE_NAME)" "$(EXPORT_DIR)/ProcessMonitor.zip"
 	@echo ""
@@ -70,6 +93,16 @@ notarize:
 	@echo ""
 	@echo "Done! $(EXPORT_DIR)/ProcessMonitor.zip is signed + notarized."
 	@echo "Recipients can open it without any Gatekeeper warnings."
+
+appcast:
+	@test -f "$(EXPORT_DIR)/ProcessMonitor.zip" || (echo "Run 'make export && make notarize' first." && exit 1)
+	@test -n "$(GENERATE_APPCAST)" || (echo "generate_appcast not found; run 'swift build' first." && exit 1)
+	@echo "Generating signed appcast.xml from $(EXPORT_DIR)/ProcessMonitor.zip..."
+	"$(GENERATE_APPCAST)" "$(EXPORT_DIR)"
+	@echo ""
+	@echo "Done. Upload these to the GitHub release:"
+	@echo "  $(EXPORT_DIR)/ProcessMonitor.zip"
+	@echo "  $(EXPORT_DIR)/appcast.xml"
 
 INSTALL_DIR = /Applications
 

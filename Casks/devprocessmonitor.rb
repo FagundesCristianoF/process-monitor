@@ -16,6 +16,8 @@ cask "devprocessmonitor" do
 
   app "ProcessMonitor.app"
 
+  auto_updates true
+
   zap trash: [
     "~/Library/Preferences/com.cristianofagundes.ProcessMonitor.plist",
     "~/Library/Application Support/ProcessMonitor",
