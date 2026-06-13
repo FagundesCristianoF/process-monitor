@@ -11,6 +11,8 @@ RESOURCE_BUNDLE = ProcessMonitor_ProcessMonitor.bundle
 # Sparkle framework source (resolved by `swift build`). Verify with:
 #   find .build/artifacts -name Sparkle.framework -type d
 SPARKLE_FRAMEWORK = .build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework
+# Framework version dir letter (e.g. B), derived so a Sparkle bump can't break signing paths.
+SPARKLE_VER = $(shell readlink "$(SPARKLE_FRAMEWORK)/Versions/Current" 2>/dev/null)
 # generate_appcast lives alongside generate_keys in the Sparkle artifact bin dir.
 # Verify with: find .build/artifacts -name generate_appcast -type f
 GENERATE_APPCAST = $(shell find .build/artifacts -name generate_appcast -type f | head -1)
@@ -34,6 +36,8 @@ bundle: build
 	cp ProcessMonitor/Resources/AppIcon.icns "$(BUNDLE_NAME)/Contents/Resources/AppIcon.icns"
 	rm -f "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)/Localizable.xcstrings"
 	xcrun xcstringstool compile --output-directory "$(BUNDLE_NAME)/Contents/Resources" "$(XCSTRINGS)"
+	mkdir -p "$(BUNDLE_NAME)/Contents/Frameworks"
+	cp -R "$(SPARKLE_FRAMEWORK)" "$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework"
 	codesign --force --deep --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" "$(BUNDLE_NAME)"
 
 run: bundle
@@ -56,13 +60,13 @@ export: release
 	mkdir -p "$(BUNDLE_NAME)/Contents/Frameworks"
 	cp -R "$(SPARKLE_FRAMEWORK)" "$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework"
 	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
-		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc"
+		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/$(SPARKLE_VER)/XPCServices/Installer.xpc"
 	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
-		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc"
+		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/$(SPARKLE_VER)/XPCServices/Downloader.xpc"
 	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
-		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"
+		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/$(SPARKLE_VER)/Autoupdate"
 	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
-		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app"
+		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/$(SPARKLE_VER)/Updater.app"
 	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
 		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework"
 	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" "$(BUNDLE_NAME)"
