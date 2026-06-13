@@ -9,16 +9,13 @@ import Sparkle
 final class UpdaterService: ObservableObject {
     private let controller: SPUStandardUpdaterController
 
-    init() {
-        // Test-only escape hatch: under XCTest there is no valid host bundle and no
-        // SUFeedURL/SUPublicEDKey Info.plist keys, so starting the real updater would
-        // abort the test process. When PM_TESTING=1 we construct the controller without
-        // starting the updater; the property flags below are still settable and the
-        // assertions remain meaningful. Production always starts the updater.
-        let testing = ProcessInfo.processInfo.environment["PM_TESTING"] == "1"
-
+    /// - Parameter startUpdater: production always passes `true`. Tests pass `false`
+    ///   because, under XCTest, there is no valid host bundle / SUFeedURL / SUPublicEDKey,
+    ///   so starting the real updater would abort the test process. The config flags
+    ///   below are still set, so the silent-update assertions remain meaningful.
+    init(startUpdater: Bool = true) {
         controller = SPUStandardUpdaterController(
-            startingUpdater: !testing,
+            startingUpdater: startUpdater,
             updaterDelegate: nil,
             userDriverDelegate: nil
         )

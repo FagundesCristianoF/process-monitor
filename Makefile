@@ -47,6 +47,7 @@ release:
 	swift build -c release --arch arm64 --arch x86_64
 
 export: release
+	@test -n "$(SPARKLE_VER)" || (echo "SPARKLE_VER empty (Sparkle.framework not resolved); run 'swift build' first." && exit 1)
 	rm -rf "$(EXPORT_DIR)" "$(BUNDLE_NAME)"
 	mkdir -p "$(BUNDLE_NAME)/Contents/MacOS"
 	mkdir -p "$(BUNDLE_NAME)/Contents/Resources"

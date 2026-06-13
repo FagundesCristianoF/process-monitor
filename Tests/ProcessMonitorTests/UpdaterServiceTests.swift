@@ -3,22 +3,16 @@ import XCTest
 
 @MainActor
 final class UpdaterServiceTests: XCTestCase {
-    // Sparkle's SPUStandardUpdaterController aborts the test process when started
-    // without a valid host bundle / SUFeedURL / SUPublicEDKey. Flag the test env so
-    // UpdaterService constructs the controller without starting the live updater.
-    override class func setUp() {
-        super.setUp()
-        setenv("PM_TESTING", "1", 1)
-    }
-
+    // Pass startUpdater: false — Sparkle's SPUStandardUpdaterController aborts the test
+    // process when started without a valid host bundle / SUFeedURL / SUPublicEDKey.
     func testStartsWithAutomaticChecksEnabled() {
-        let service = UpdaterService()
+        let service = UpdaterService(startUpdater: false)
         XCTAssertTrue(service.automaticallyChecksForUpdates,
                       "Updater should auto-check by default for silent updates")
     }
 
     func testStartsWithAutomaticDownloadEnabled() {
-        let service = UpdaterService()
+        let service = UpdaterService(startUpdater: false)
         XCTAssertTrue(service.automaticallyDownloadsUpdates,
                       "Updater should auto-download for silent updates")
     }
@@ -27,11 +21,17 @@ final class UpdaterServiceTests: XCTestCase {
     /// start ("The updater failed to start"). The key must decode to a 32-byte
     /// Ed25519 public key, and must not be the build placeholder.
     func testInfoPlistHasValidEdDSAPublicKey() throws {
-        // Tests/ProcessMonitorTests/UpdaterServiceTests.swift -> repo root is 3 dirs up.
-        let repoRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
+        // Walk up from this file to the repo root (the dir containing Package.swift),
+        // so the test survives directory restructuring.
+        var repoRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        while !FileManager.default.fileExists(atPath: repoRoot.appendingPathComponent("Package.swift").path) {
+            let parent = repoRoot.deletingLastPathComponent()
+            guard parent != repoRoot else {
+                XCTFail("Could not locate repo root (Package.swift) from \(#filePath)")
+                return
+            }
+            repoRoot = parent
+        }
         let plistURL = repoRoot.appendingPathComponent("Info.plist")
 
         let data = try Data(contentsOf: plistURL)
