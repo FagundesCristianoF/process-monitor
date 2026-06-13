@@ -30,4 +30,23 @@ final class AppInfoTests: XCTestCase {
         XCTAssertTrue(body!.contains("1.3.1 (5)"), "body should include the app version/build")
         XCTAssertTrue(body!.contains("Version 15.0 (Build 24A335)"), "body should include the macOS version")
     }
+
+    // MARK: - Bundle-backed accessors (no .app bundle in tests → em-dash fallback)
+
+    func testRepositoryURL() {
+        XCTAssertEqual(AppInfo.repositoryURL.host, "github.com")
+    }
+
+    func testVersionAndBuildAccessorsReturnNonEmpty() {
+        XCTAssertFalse(AppInfo.version.isEmpty)
+        XCTAssertFalse(AppInfo.build.isEmpty)
+    }
+
+    func testDisplayVersionAccessorMatchesComponents() {
+        XCTAssertEqual(AppInfo.displayVersion, "\(AppInfo.version) (\(AppInfo.build))")
+    }
+
+    func testBugReportURLAccessorIsNewIssue() {
+        XCTAssertEqual(AppInfo.bugReportURL.path, "/FagundesCristianoF/process-monitor/issues/new")
+    }
 }

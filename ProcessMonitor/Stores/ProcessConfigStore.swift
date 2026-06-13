@@ -2,7 +2,7 @@ import Foundation
 import Combine
 
 final class ProcessConfigStore: ObservableObject {
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
     private static let limitsPrefix = "memoryLimit_"
     private static let definitionsKey = "monitoredDefinitions"
     private static let patternVersionKey = "patternSchemaVersion"
@@ -67,7 +67,6 @@ final class ProcessConfigStore: ObservableObject {
     }
 
     private func applyLanguagePreference() {
-        let defaults = UserDefaults.standard
         if let lang = preferredLanguage, !lang.isEmpty {
             defaults.set([lang], forKey: "AppleLanguages")
         } else {
@@ -75,8 +74,15 @@ final class ProcessConfigStore: ObservableObject {
         }
     }
 
-    init() {
-        self.configFileURL = Self.defaultConfigFileURL()
+    convenience init() {
+        self.init(configFileURL: Self.defaultConfigFileURL(), defaults: .standard)
+    }
+
+    /// Designated initializer. The file URL and defaults are injectable so tests
+    /// can run against a temporary config without touching the user's real one.
+    init(configFileURL: URL, defaults: UserDefaults) {
+        self.configFileURL = configFileURL
+        self.defaults = defaults
 
         if let loaded = Self.loadFromDisk(at: configFileURL) {
             self.pollIntervalSeconds = loaded.pollIntervalSeconds > 0

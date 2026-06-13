@@ -71,4 +71,97 @@ final class CleanupStoreTests: XCTestCase {
         let id = store.commands[0].id
         XCTAssertEqual(store.runState(for: id), .idle)
     }
+
+    // MARK: - executableName
+
+    func testExecutableNameSimpleCommand() {
+        XCTAssertEqual(CleanupStore.executableName(from: "npm cache clean --force"), "npm")
+    }
+
+    func testExecutableNameMultiTokenTool() {
+        XCTAssertEqual(CleanupStore.executableName(from: "xcrun simctl erase all"), "xcrun")
+    }
+
+    func testExecutableNameAbsolutePath() {
+        XCTAssertEqual(CleanupStore.executableName(from: "/opt/homebrew/bin/brew cleanup"), "/opt/homebrew/bin/brew")
+    }
+
+    func testExecutableNameSkipsEnvAssignments() {
+        XCTAssertEqual(CleanupStore.executableName(from: "FOO=bar BAZ=1 npm run x"), "npm")
+    }
+
+    func testExecutableNameEmptyCommand() {
+        XCTAssertNil(CleanupStore.executableName(from: "   "))
+    }
+
+    // MARK: - Execution
+
+    @discardableResult
+    private func waitForTerminalState(_ store: CleanupStore, _ id: UUID, timeout: TimeInterval = 5) -> RunState {
+        let exp = expectation(description: "terminal state")
+        var result: RunState = .idle
+        func poll() {
+            switch store.runState(for: id) {
+            case .success, .failure:
+                result = store.runState(for: id)
+                exp.fulfill()
+            default:
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { poll() }
+            }
+        }
+        poll()
+        wait(for: [exp], timeout: timeout)
+        return result
+    }
+
+    func testRunSuccessCapturesStdout() {
+        let store = makeStore()
+        let cmd = CleanupCommand(id: UUID(), name: "Echo", command: "echo hello-world", isEnabled: true)
+        store.add(cmd)
+        store.run(id: cmd.id)
+        guard case let .success(output) = waitForTerminalState(store, cmd.id) else {
+            return XCTFail("expected success")
+        }
+        XCTAssertTrue(output.contains("hello-world"))
+    }
+
+    func testRunMissingCommandReturnsPathHint() {
+        let store = makeStore()
+        let missing = "pmnosuchcmd_\(UUID().uuidString.prefix(8))"
+        let cmd = CleanupCommand(id: UUID(), name: "Missing", command: "\(missing) cleanup", isEnabled: true)
+        store.add(cmd)
+        store.run(id: cmd.id)
+        guard case let .failure(output) = waitForTerminalState(store, cmd.id) else {
+            return XCTFail("expected failure")
+        }
+        XCTAssertTrue(output.contains("not found"))
+        XCTAssertTrue(output.contains("PATH"))
+        XCTAssertTrue(output.contains(missing))
+    }
+
+    func testRunDisabledCommandStaysIdle() {
+        let store = makeStore()
+        let cmd = CleanupCommand(id: UUID(), name: "Off", command: "echo nope", isEnabled: false)
+        store.add(cmd)
+        store.run(id: cmd.id)
+        let exp = expectation(description: "settle")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { exp.fulfill() }
+        wait(for: [exp], timeout: 1)
+        XCTAssertEqual(store.runState(for: cmd.id), .idle)
+    }
+
+    func testRunAllRunsEnabledCommands() {
+        let store = makeStore()
+        // Replace seeds with two known-good echo commands.
+        for c in store.commands { store.remove(id: c.id) }
+        let a = CleanupCommand(id: UUID(), name: "A", command: "echo a", isEnabled: true)
+        let b = CleanupCommand(id: UUID(), name: "B", command: "echo b", isEnabled: true)
+        store.add(a)
+        store.add(b)
+        store.runAll()
+        waitForTerminalState(store, a.id)
+        waitForTerminalState(store, b.id)
+        if case .success = store.runState(for: a.id) {} else { XCTFail("A should succeed") }
+        if case .success = store.runState(for: b.id) {} else { XCTFail("B should succeed") }
+    }
 }

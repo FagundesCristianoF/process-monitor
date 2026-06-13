@@ -105,9 +105,19 @@ final class CleanupStore: ObservableObject {
 
     /// Returns (stdout, ""). On non-zero exit, returns ("", combinedOutput).
     private func execute(_ command: String) -> (stdout: String, stderr: String) {
+        // Preflight: make sure the command's executable resolves on PATH before
+        // running. GUI-launched apps inherit a minimal PATH, so tools installed
+        // via Homebrew/nvm (brew, npm, ...) often aren't found. Surface a clear
+        // hint instead of a raw "command not found".
+        if let exe = Self.executableName(from: command), !isExecutableAvailable(exe) {
+            return ("", "\(exe) not found. Check if it's added to PATH.")
+        }
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        process.arguments = ["-c", command]
+        // Login shell (-l) so ~/.zprofile / ~/.zshrc populate PATH the way an
+        // interactive terminal would — otherwise brew/npm won't be on PATH.
+        process.arguments = ["-lc", command]
 
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
@@ -129,6 +139,43 @@ final class CleanupStore: ObservableObject {
             return ("", combined)
         }
         return (stdout, "")
+    }
+
+    /// Extracts the executable name from a command string, skipping any leading
+    /// `VAR=value` environment assignments. Returns nil for an empty command.
+    static func executableName(from command: String) -> String? {
+        let tokens = command.split(whereSeparator: { $0 == " " || $0 == "\t" })
+        for token in tokens {
+            let t = String(token)
+            // Skip leading environment assignments like FOO=bar.
+            if let eq = t.firstIndex(of: "="), !t.contains("/"),
+               t[..<eq].allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }), eq != t.startIndex {
+                continue
+            }
+            return t
+        }
+        return nil
+    }
+
+    /// Resolves `name` against the login shell's PATH (matches how `command` runs).
+    private func isExecutableAvailable(_ name: String) -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        process.arguments = ["-lc", "command -v -- \(Self.shellQuoted(name)) >/dev/null 2>&1"]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+        } catch {
+            return false
+        }
+        process.waitUntilExit()
+        return process.terminationStatus == 0
+    }
+
+    /// Single-quotes a string for safe interpolation into a shell command.
+    static func shellQuoted(_ s: String) -> String {
+        "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
     private func setRunState(_ state: RunState, for id: UUID) {

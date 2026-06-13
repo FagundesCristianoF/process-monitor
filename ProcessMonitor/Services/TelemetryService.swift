@@ -80,7 +80,7 @@ enum Telemetry {
     // MARK: - Privacy scrubbing
 
     /// Strip process names from event payloads so user PII never leaves the device.
-    private static func scrub(_ event: Event) {
+    static func scrub(_ event: Event) {
         if var extra = event.extra {
             extra.removeValue(forKey: "process")
             extra.removeValue(forKey: "command")
@@ -92,7 +92,7 @@ enum Telemetry {
         }
     }
 
-    private static func scrub(_ crumb: Breadcrumb) {
+    static func scrub(_ crumb: Breadcrumb) {
         crumb.data?.removeValue(forKey: "process")
         crumb.data?.removeValue(forKey: "command")
         crumb.data?.removeValue(forKey: "processName")

@@ -9,13 +9,34 @@ final class NotificationService: ObservableObject {
     private var permissionGranted = false
     private let queue = DispatchQueue(label: "NotificationService.state")
 
-    init() {}
+    /// Whether the process runs inside a real .app bundle. When false, the
+    /// service logs to stdout instead of posting system notifications — both the
+    /// production "running headless" path and the test path.
+    private let isHosted: Bool
+    private let post: (UNNotificationRequest) -> Void
+    private let authorize: (@escaping (Bool, Error?) -> Void) -> Void
+
+    init(
+        isHosted: Bool = Bundle.main.bundleIdentifier != nil,
+        post: @escaping (UNNotificationRequest) -> Void = { req in
+            UNUserNotificationCenter.current().add(req) { error in
+                if let error {
+                    print("Failed to send notification: \(error.localizedDescription)")
+                }
+            }
+        },
+        authorize: @escaping (@escaping (Bool, Error?) -> Void) -> Void = { completion in
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert], completionHandler: completion)
+        }
+    ) {
+        self.isHosted = isHosted
+        self.post = post
+        self.authorize = authorize
+    }
 
     func requestPermissionIfNeeded() {
-        guard Bundle.main.bundleIdentifier != nil else { return }
-        UNUserNotificationCenter.current().requestAuthorization(
-            options: [.alert]
-        ) { [weak self] granted, error in
+        guard isHosted else { return }
+        authorize { [weak self] granted, error in
             if let error {
                 print("Notification permission error: \(error.localizedDescription)")
             }
@@ -48,7 +69,7 @@ final class NotificationService: ObservableObject {
     }
 
     private func sendNotification(processName: String, memoryMB: Double, limitMB: Int) {
-        guard Bundle.main.bundleIdentifier != nil else {
+        guard isHosted else {
             print(
                 "⚠ \(processName) using \(formatMemory(memoryMB)) "
                 + "(limit: \(formatMemory(Double(limitMB))))"
@@ -58,73 +79,72 @@ final class NotificationService: ObservableObject {
 
         let content = UNMutableNotificationContent()
         content.title = NSLocalizedString("Memory Warning", comment: "Notification title for memory warning")
-        let bodyFormat = NSLocalizedString(
-            "%1$@ is using %2$@ (limit: %3$@). Consider restarting it.",
-            comment: "Notification body. %1 = process name, %2 = memory, %3 = limit"
-        )
-        content.body = String(
-            format: bodyFormat,
-            processName,
-            formatMemory(memoryMB),
-            formatMemory(Double(limitMB))
-        )
+        content.body = Self.memoryBody(processName: processName, memoryMB: memoryMB, limitMB: limitMB)
         let request = UNNotificationRequest(
             identifier: "mem_\(processName)_\(Date().timeIntervalSince1970)",
             content: content,
             trigger: nil
         )
-
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error {
-                print("Failed to send notification: \(error.localizedDescription)")
-            }
-        }
+        post(request)
     }
 
     func notifyDiskWarning(status: DiskVolumeStatus) {
-        guard Bundle.main.bundleIdentifier != nil else {
+        guard isHosted else {
             print("⚠ \(status.volume.displayName): \(formatDiskGB(status.freeGB)) free (\(String(format: "%.1f", status.freePercent))%)")
             return
         }
         let content = UNMutableNotificationContent()
         content.title = NSLocalizedString("Low Disk Space", comment: "Disk warning notification title")
-        let bodyFormat = NSLocalizedString(
-            "%1$@ has %2$@ free (%3$@). Consider cleaning up.",
-            comment: "Disk warning body. %1=volume name, %2=free space, %3=percent"
-        )
-        content.body = String(
-            format: bodyFormat,
-            status.volume.displayName,
-            formatDiskGB(status.freeGB),
-            String(format: "%.1f%%", status.freePercent)
-        )
+        content.body = Self.diskBody(status: status)
         let request = UNNotificationRequest(
             identifier: "disk_\(status.volume.id)_\(Date().timeIntervalSince1970)",
             content: content,
             trigger: nil
         )
-        UNUserNotificationCenter.current().add(request) { _ in }
+        post(request)
     }
 
     func notifyAutoRestart(processName: String, memoryMB: Double, limitMB: Int) {
-        guard Bundle.main.bundleIdentifier != nil else { return }
+        guard isHosted else { return }
         let content = UNMutableNotificationContent()
         content.title = NSLocalizedString("Auto-restart triggered", comment: "Auto-restart notification title")
-        let bodyFormat = NSLocalizedString(
-            "Restarting %1$@ — used %2$@ (limit: %3$@).",
-            comment: "Auto-restart body. %1=name, %2=memory, %3=limit"
-        )
-        content.body = String(
-            format: bodyFormat,
-            processName,
-            formatMemory(memoryMB),
-            formatMemory(Double(limitMB))
-        )
+        content.body = Self.autoRestartBody(processName: processName, memoryMB: memoryMB, limitMB: limitMB)
         let request = UNNotificationRequest(
             identifier: "autorestart_\(processName)_\(Date().timeIntervalSince1970)",
             content: content,
             trigger: nil
         )
-        UNUserNotificationCenter.current().add(request) { _ in }
+        post(request)
+    }
+
+    // MARK: - Body builders (pure, testable)
+
+    static func memoryBody(processName: String, memoryMB: Double, limitMB: Int) -> String {
+        let bodyFormat = NSLocalizedString(
+            "%1$@ is using %2$@ (limit: %3$@). Consider restarting it.",
+            comment: "Notification body. %1 = process name, %2 = memory, %3 = limit"
+        )
+        return String(format: bodyFormat, processName, formatMemory(memoryMB), formatMemory(Double(limitMB)))
+    }
+
+    static func diskBody(status: DiskVolumeStatus) -> String {
+        let bodyFormat = NSLocalizedString(
+            "%1$@ has %2$@ free (%3$@). Consider cleaning up.",
+            comment: "Disk warning body. %1=volume name, %2=free space, %3=percent"
+        )
+        return String(
+            format: bodyFormat,
+            status.volume.displayName,
+            formatDiskGB(status.freeGB),
+            String(format: "%.1f%%", status.freePercent)
+        )
+    }
+
+    static func autoRestartBody(processName: String, memoryMB: Double, limitMB: Int) -> String {
+        let bodyFormat = NSLocalizedString(
+            "Restarting %1$@ — used %2$@ (limit: %3$@).",
+            comment: "Auto-restart body. %1=name, %2=memory, %3=limit"
+        )
+        return String(format: bodyFormat, processName, formatMemory(memoryMB), formatMemory(Double(limitMB)))
     }
 }
