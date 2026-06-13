@@ -1,4 +1,4 @@
-.PHONY: build run clean bundle release export notarize install uninstall identities dev
+.PHONY: build run clean bundle release export notarize appcast install uninstall identities dev
 
 APP_NAME = Process Monitor
 BUNDLE_NAME = ProcessMonitor.app
@@ -11,6 +11,9 @@ RESOURCE_BUNDLE = ProcessMonitor_ProcessMonitor.bundle
 # Sparkle framework source (resolved by `swift build`). Verify with:
 #   find .build/artifacts -name Sparkle.framework -type d
 SPARKLE_FRAMEWORK = .build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework
+# generate_appcast lives alongside generate_keys in the Sparkle artifact bin dir.
+# Verify with: find .build/artifacts -name generate_appcast -type f
+GENERATE_APPCAST = $(shell find .build/artifacts -name generate_appcast -type f | head -1)
 
 # Keychain profile name for notarytool (created via: xcrun notarytool store-credentials)
 NOTARY_PROFILE ?= ProcessMonitor
@@ -85,6 +88,16 @@ notarize:
 	@echo ""
 	@echo "Done! $(EXPORT_DIR)/ProcessMonitor.zip is signed + notarized."
 	@echo "Recipients can open it without any Gatekeeper warnings."
+
+appcast:
+	@test -f "$(EXPORT_DIR)/ProcessMonitor.zip" || (echo "Run 'make export && make notarize' first." && exit 1)
+	@test -n "$(GENERATE_APPCAST)" || (echo "generate_appcast not found; run 'swift build' first." && exit 1)
+	@echo "Generating signed appcast.xml from $(EXPORT_DIR)/ProcessMonitor.zip..."
+	"$(GENERATE_APPCAST)" "$(EXPORT_DIR)"
+	@echo ""
+	@echo "Done. Upload these to the GitHub release:"
+	@echo "  $(EXPORT_DIR)/ProcessMonitor.zip"
+	@echo "  $(EXPORT_DIR)/appcast.xml"
 
 INSTALL_DIR = /Applications
 
