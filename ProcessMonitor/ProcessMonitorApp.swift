@@ -65,8 +65,7 @@ struct ProcessMonitorApp: App {
                 diskMonitorService: diskMonitorService,
                 configStore: configStore,
                 launchAtLoginStore: launchAtLoginStore,
-                cleanupStore: cleanupStore,
-                updaterService: updaterService
+                cleanupStore: cleanupStore
             )
             .frame(width: 420, height: 520)
             .onChange(of: configStore.telemetryEnabled) { enabled in

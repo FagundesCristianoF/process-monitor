@@ -41,7 +41,7 @@
 	<key>SUFeedURL</key>
 	<string>https://github.com/FagundesCristianoF/process-monitor/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>REPLACE_WITH_ED_PUBLIC_KEY</string>
+	<string>rckcj4gh6SkK3s97mQmtUqO/Srz9L75t+MeQpGRQV4E=</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUAutomaticallyUpdate</key>

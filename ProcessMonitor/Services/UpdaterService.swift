@@ -1,15 +1,13 @@
 import Foundation
-import Combine
 import Sparkle
 
 /// Thin wrapper around Sparkle configured for fully silent automatic updates.
-/// Owns the updater lifecycle; exposes a manual check for the "Check for Updates" UI.
+/// There is no user-facing UI: the updater checks on a schedule, downloads, and
+/// installs in the background, relaunching the app into the new version. Errors
+/// from background checks are suppressed by Sparkle (no dialogs).
 @MainActor
 final class UpdaterService: ObservableObject {
     private let controller: SPUStandardUpdaterController
-
-    /// Mirrors Sparkle's `canCheckForUpdates`, used to enable/disable the menu item.
-    @Published var canCheckForUpdates = false
 
     init() {
         // Test-only escape hatch: under XCTest there is no valid host bundle and no
@@ -29,9 +27,6 @@ final class UpdaterService: ObservableObject {
         updater.automaticallyChecksForUpdates = true
         updater.automaticallyDownloadsUpdates = true
 
-        controller.updater.publisher(for: \.canCheckForUpdates)
-            .assign(to: &$canCheckForUpdates)
-
         Telemetry.breadcrumb("Updater started", category: "update")
     }
 
@@ -41,10 +36,5 @@ final class UpdaterService: ObservableObject {
 
     var automaticallyDownloadsUpdates: Bool {
         controller.updater.automaticallyDownloadsUpdates
-    }
-
-    /// Triggers a user-initiated check.
-    func checkForUpdates() {
-        controller.updater.checkForUpdates()
     }
 }
