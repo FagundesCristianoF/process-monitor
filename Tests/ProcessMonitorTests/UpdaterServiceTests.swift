@@ -25,6 +25,7 @@ final class UpdaterServiceTests: XCTestCase {
 
     func testCanCheckForUpdatesIsExposed() {
         let service = UpdaterService()
-        _ = service.canCheckForUpdates
+        // Updater is not started in the test env, so it cannot check yet.
+        XCTAssertFalse(service.canCheckForUpdates)
     }
 }
