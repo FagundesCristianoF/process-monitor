@@ -8,6 +8,9 @@ EXPORT_DIR = export
 TEAM_ID = VP83767PVX
 XCSTRINGS = ProcessMonitor/Resources/Localizable.xcstrings
 RESOURCE_BUNDLE = ProcessMonitor_ProcessMonitor.bundle
+# Sparkle framework source (resolved by `swift build`). Verify with:
+#   find .build/artifacts -name Sparkle.framework -type d
+SPARKLE_FRAMEWORK = .build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework
 
 # Keychain profile name for notarytool (created via: xcrun notarytool store-credentials)
 NOTARY_PROFILE ?= ProcessMonitor
@@ -47,7 +50,19 @@ export: release
 	rm -f "$(BUNDLE_NAME)/Contents/Resources/$(RESOURCE_BUNDLE)/Localizable.xcstrings"
 	xcrun xcstringstool compile --output-directory "$(BUNDLE_NAME)/Contents/Resources" "$(XCSTRINGS)"
 	strip "$(BUNDLE_NAME)/Contents/MacOS/ProcessMonitor"
-	codesign --force --deep --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" "$(BUNDLE_NAME)"
+	mkdir -p "$(BUNDLE_NAME)/Contents/Frameworks"
+	cp -R "$(SPARKLE_FRAMEWORK)" "$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework"
+	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
+		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc"
+	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
+		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc"
+	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
+		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"
+	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
+		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app"
+	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" \
+		"$(BUNDLE_NAME)/Contents/Frameworks/Sparkle.framework"
+	codesign --force --options runtime --sign "$(SIGN_IDENTITY)" --team-id "$(TEAM_ID)" "$(BUNDLE_NAME)"
 	mkdir -p "$(EXPORT_DIR)"
 	ditto -c -k --keepParent "$(BUNDLE_NAME)" "$(EXPORT_DIR)/ProcessMonitor.zip"
 	@echo ""
