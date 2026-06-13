@@ -137,6 +137,7 @@ struct ProcessListView: View {
     @ObservedObject var configStore: ProcessConfigStore
     @ObservedObject var launchAtLoginStore: LaunchAtLoginStore
     @ObservedObject var cleanupStore: CleanupStore
+    @ObservedObject var updaterService: UpdaterService
     @AppStorage("processSortOrder") private var sortOrder: String = ProcessSortOrder.active.rawValue
     @AppStorage("filterWarningsOnly") private var filterWarningsOnly: Bool = false
 
@@ -399,6 +400,17 @@ struct ProcessListView: View {
                 .font(.system(.caption2, design: .monospaced))
                 .foregroundStyle(.tertiary)
                 .help(AppInfo.displayVersion)
+
+            Button(action: { updaterService.checkForUpdates() }) {
+                Text("Check for Updates")
+                    .font(.system(.caption, design: .rounded, weight: .medium))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(.quaternary.opacity(0.5)))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .disabled(!updaterService.canCheckForUpdates)
 
             Button(action: { NSApplication.shared.terminate(nil) }) {
                 Text("Quit")
