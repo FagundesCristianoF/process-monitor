@@ -53,6 +53,24 @@ final class NotificationServiceTests: XCTestCase {
         XCTAssertEqual(posted().count, 1)
     }
 
+    func testZeroRateLimitAfterResetAllowsRenotify() {
+        let (svc, posted) = hostedService()
+        svc.notifyIfNeeded(processName: "Java", memoryMB: 2048, limitMB: 1024, definitionID: "java", rateLimitSeconds: 0)
+        svc.resetMemoryNotification(for: "java")
+        // Rate limit elapsed (0s) AND reset cleared the once-flag → re-notifies.
+        svc.notifyIfNeeded(processName: "Java", memoryMB: 2048, limitMB: 1024, definitionID: "java", rateLimitSeconds: 0)
+        XCTAssertEqual(posted().count, 2)
+    }
+
+    func testRateLimitSuppressesEvenAfterReset() {
+        let (svc, posted) = hostedService()
+        svc.notifyIfNeeded(processName: "Java", memoryMB: 2048, limitMB: 1024, definitionID: "java", rateLimitSeconds: 3600)
+        svc.resetMemoryNotification(for: "java")
+        // Within the rate-limit window the reset alone must not re-enable.
+        svc.notifyIfNeeded(processName: "Java", memoryMB: 2048, limitMB: 1024, definitionID: "java", rateLimitSeconds: 3600)
+        XCTAssertEqual(posted().count, 1)
+    }
+
     func testDifferentDefinitionsPostSeparately() {
         let (svc, posted) = hostedService()
         svc.notifyIfNeeded(processName: "Java", memoryMB: 2048, limitMB: 1024, definitionID: "java")

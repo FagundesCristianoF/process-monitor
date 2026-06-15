@@ -12,6 +12,9 @@ final class ProcessConfigStore: ObservableObject {
     static let defaultPollInterval: Double = 5
     static let minPollInterval: Double = 1
     static let maxPollInterval: Double = 60
+    static let defaultNotificationRateLimit: Double = 3600 // 1h
+    static let minNotificationRateLimit: Double = 60       // 1 min
+    static let maxNotificationRateLimit: Double = 86400    // 24h
 
     @Published var definitions: [ProcessDefinition] = [] {
         didSet { if isInitialized { persist() } }
@@ -34,6 +37,17 @@ final class ProcessConfigStore: ObservableObject {
     }
     @Published var isPaused: Bool {
         didSet { if isInitialized { persist() } }
+    }
+    /// Minimum interval (seconds) between push notifications for the same app.
+    @Published var notificationRateLimitSeconds: Double {
+        didSet {
+            let clamped = min(max(notificationRateLimitSeconds, Self.minNotificationRateLimit), Self.maxNotificationRateLimit)
+            if clamped != notificationRateLimitSeconds {
+                notificationRateLimitSeconds = clamped
+                return
+            }
+            if isInitialized { persist() }
+        }
     }
     @Published var telemetryEnabled: Bool {
         didSet { if isInitialized { persist() } }
@@ -64,6 +78,7 @@ final class ProcessConfigStore: ObservableObject {
         var preferredLanguage: String?
         var autoRestartLimits: [String: Int]?
         var diskVolumes: [DiskVolume]?
+        var notificationRateLimitSeconds: Double?
     }
 
     private func applyLanguagePreference() {
@@ -89,6 +104,7 @@ final class ProcessConfigStore: ObservableObject {
                 ? loaded.pollIntervalSeconds
                 : Self.defaultPollInterval
             self.isPaused = loaded.isPaused
+            self.notificationRateLimitSeconds = loaded.notificationRateLimitSeconds ?? Self.defaultNotificationRateLimit
             self.telemetryEnabled = loaded.telemetryEnabled ?? true
             self.preferredLanguage = loaded.preferredLanguage
             self.diskVolumes = loaded.diskVolumes ?? [.bootDefault]
@@ -103,6 +119,7 @@ final class ProcessConfigStore: ObservableObject {
             let storedInterval = defaults.double(forKey: Self.pollIntervalKey)
             self.pollIntervalSeconds = storedInterval > 0 ? storedInterval : Self.defaultPollInterval
             self.isPaused = defaults.bool(forKey: Self.isPausedKey)
+            self.notificationRateLimitSeconds = Self.defaultNotificationRateLimit
             self.telemetryEnabled = true
             self.preferredLanguage = nil
             self.definitions = Self.loadDefinitionsFromDefaults(defaults)
@@ -236,7 +253,8 @@ final class ProcessConfigStore: ObservableObject {
             telemetryEnabled: telemetryEnabled,
             preferredLanguage: preferredLanguage,
             autoRestartLimits: autoRestartLimits,
-            diskVolumes: diskVolumes
+            diskVolumes: diskVolumes,
+            notificationRateLimitSeconds: notificationRateLimitSeconds
         )
         do {
             let dir = configFileURL.deletingLastPathComponent()

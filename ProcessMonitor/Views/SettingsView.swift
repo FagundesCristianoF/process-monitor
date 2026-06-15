@@ -146,6 +146,7 @@ struct SettingsView: View {
     @State private var showAddDiskForm = false
     @State private var showRestartAlert = false
     @State private var pollIntervalDraft: Double = ProcessConfigStore.defaultPollInterval
+    @State private var notifRateLimitMinutesDraft: Double = ProcessConfigStore.defaultNotificationRateLimit / 60
     @State private var notifAuthStatus: UNAuthorizationStatus = .notDetermined
 
     var body: some View {
@@ -157,6 +158,7 @@ struct SettingsView: View {
         .frame(minWidth: 680, idealWidth: 700, minHeight: 460)
         .onAppear {
             pollIntervalDraft = configStore.pollIntervalSeconds
+            notifRateLimitMinutesDraft = configStore.notificationRateLimitSeconds / 60
             refreshNotifStatus()
         }
         .sheet(isPresented: $showAddForm) {
@@ -369,8 +371,37 @@ struct SettingsView: View {
                             .frame(width: 32, alignment: .trailing)
                     }
                 }
+                Divider().opacity(0.4).padding(.horizontal, 14)
+                settingsRow {
+                    HStack(spacing: 12) {
+                        Label("Notify at most every", systemImage: "bell.slash")
+                            .labelStyle(SettingsLabelStyle())
+                            .layoutPriority(1)
+                        Slider(
+                            value: $notifRateLimitMinutesDraft,
+                            in: (ProcessConfigStore.minNotificationRateLimit / 60)...(ProcessConfigStore.maxNotificationRateLimit / 60),
+                            step: 1
+                        ) { editing in
+                            if !editing {
+                                configStore.notificationRateLimitSeconds = notifRateLimitMinutesDraft * 60
+                            }
+                        }
+                        Text(notifRateLimitLabel)
+                            .font(.system(.caption, design: .monospaced, weight: .medium))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                            .frame(width: 44, alignment: .trailing)
+                    }
+                }
             }
         }
+    }
+
+    private var notifRateLimitLabel: String {
+        let minutes = Int(notifRateLimitMinutesDraft)
+        if minutes < 60 { return "\(minutes)m" }
+        if minutes % 60 == 0 { return "\(minutes / 60)h" }
+        return String(format: "%.1fh", Double(minutes) / 60)
     }
 
     // MARK: - Privacy Detail

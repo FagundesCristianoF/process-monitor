@@ -524,7 +524,8 @@ final class ProcessMonitorService: ObservableObject {
                 processName: process.definition.displayName,
                 memoryMB: process.totalMemoryMB,
                 limitMB: process.memoryLimitMB,
-                definitionID: process.definition.id
+                definitionID: process.definition.id,
+                rateLimitSeconds: configStore.notificationRateLimitSeconds
             )
 
             // Auto-restart check

@@ -2,7 +2,10 @@ import Foundation
 import UserNotifications
 
 final class NotificationService: ObservableObject {
-    static let notificationCooldown: TimeInterval = 900 // 15 min between notifications per definition
+    /// Default minimum interval between notifications for the same app. Acts as a
+    /// per-app push rate limit; configurable via ProcessConfigStore. State is held
+    /// in memory only, so it resets when the app restarts.
+    static let defaultRateLimit: TimeInterval = 3600 // 1h between notifications per definition
 
     private var notifiedDefinitionIDs: Set<String> = []
     private var lastNotifiedAt: [String: Date] = [:]
@@ -44,13 +47,19 @@ final class NotificationService: ObservableObject {
         }
     }
 
-    func notifyIfNeeded(processName: String, memoryMB: Double, limitMB: Int, definitionID: String) {
+    func notifyIfNeeded(
+        processName: String,
+        memoryMB: Double,
+        limitMB: Int,
+        definitionID: String,
+        rateLimitSeconds: TimeInterval = NotificationService.defaultRateLimit
+    ) {
         var shouldSend = false
         let now = Date()
         queue.sync {
             let alreadyNotified = notifiedDefinitionIDs.contains(definitionID)
             let withinCooldown = lastNotifiedAt[definitionID].map {
-                now.timeIntervalSince($0) < Self.notificationCooldown
+                now.timeIntervalSince($0) < rateLimitSeconds
             } ?? false
             if !alreadyNotified && !withinCooldown {
                 notifiedDefinitionIDs.insert(definitionID)
