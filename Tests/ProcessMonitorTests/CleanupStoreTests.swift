@@ -16,8 +16,9 @@ final class CleanupStoreTests: XCTestCase {
 
     func testSeedsDefaultCommandsOnFirstLoad() {
         let store = makeStore()
-        XCTAssertEqual(store.commands.count, 7)
-        // Note: "iOS Simulator Data" seeds with isEnabled: false — don't assert allSatisfy(\.isEnabled)
+        XCTAssertEqual(store.commands.count, 15)
+        // Note: several seeds (e.g. "iOS Simulator Data", scans) seed with isEnabled: false —
+        // don't assert allSatisfy(\.isEnabled)
     }
 
     func testDoesNotReseedWhenDataExists() {
@@ -25,7 +26,56 @@ final class CleanupStoreTests: XCTestCase {
         let store1 = CleanupStore(defaults: defaults)
         store1.add(CleanupCommand(id: UUID(), name: "Custom", command: "echo hi", isEnabled: true))
         let store2 = CleanupStore(defaults: defaults)
-        XCTAssertEqual(store2.commands.count, 8)
+        XCTAssertEqual(store2.commands.count, 16)
+    }
+
+    // MARK: - Seed merge migration
+
+    func testMergeAppendsNewSeedsForPreMigrationData() {
+        // Simulate a pre-migration install: persisted commands but no seeded-names record.
+        let defaults = Self.makeIsolatedDefaults()
+        let legacy = [CleanupCommand(id: UUID(), name: "Homebrew", command: "brew cleanup --prune=all", isEnabled: true)]
+        defaults.set(try? JSONEncoder().encode(legacy), forKey: "cleanupCommands")
+
+        let store = CleanupStore(defaults: defaults)
+        // Existing command preserved.
+        XCTAssertTrue(store.commands.contains { $0.name == "Homebrew" })
+        // Newer default introduced after their data was written gets appended.
+        XCTAssertTrue(store.commands.contains { $0.name == "Gradle Caches" })
+        // No duplicate of the command they already had.
+        XCTAssertEqual(store.commands.filter { $0.name == "Homebrew" }.count, 1)
+    }
+
+    func testRepairsLegacySimctlEraseCommand() {
+        // A pre-fix install persisted the bug-prone "erase all" (fails on a booted sim).
+        let defaults = Self.makeIsolatedDefaults()
+        let legacy = [CleanupCommand(id: UUID(), name: "iOS Simulator Data", command: "xcrun simctl erase all", isEnabled: false)]
+        defaults.set(try? JSONEncoder().encode(legacy), forKey: "cleanupCommands")
+
+        let store = CleanupStore(defaults: defaults)
+        let cmd = store.commands.first { $0.name == "iOS Simulator Data" }
+        XCTAssertEqual(cmd?.command, "xcrun simctl shutdown all 2>/dev/null; xcrun simctl erase all")
+    }
+
+    func testDoesNotTouchCustomizedSimctlCommand() {
+        // If the user edited the command, the repair must leave it alone.
+        let defaults = Self.makeIsolatedDefaults()
+        let custom = [CleanupCommand(id: UUID(), name: "iOS Simulator Data", command: "xcrun simctl erase MyDevice", isEnabled: false)]
+        defaults.set(try? JSONEncoder().encode(custom), forKey: "cleanupCommands")
+
+        let store = CleanupStore(defaults: defaults)
+        let cmd = store.commands.first { $0.name == "iOS Simulator Data" }
+        XCTAssertEqual(cmd?.command, "xcrun simctl erase MyDevice")
+    }
+
+    func testMergeDoesNotResurrectDeletedSeed() {
+        let defaults = Self.makeIsolatedDefaults()
+        let store1 = CleanupStore(defaults: defaults)          // seeds + records seeded names
+        let gradle = store1.commands.first { $0.name == "Gradle Caches" }!
+        store1.remove(id: gradle.id)
+
+        let store2 = CleanupStore(defaults: defaults)
+        XCTAssertFalse(store2.commands.contains { $0.name == "Gradle Caches" })
     }
 
     // MARK: - CRUD

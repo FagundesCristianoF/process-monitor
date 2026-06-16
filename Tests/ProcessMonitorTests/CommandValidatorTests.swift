@@ -35,6 +35,25 @@ final class CommandValidatorTests: XCTestCase {
         )
     }
 
+    func testGradleCachesSeedPasses() {
+        XCTAssertEqual(CommandValidator.validate("rm -rf ~/.gradle/caches"), .ok)
+    }
+
+    func testXcodeDerivedDataSeedPasses() {
+        XCTAssertEqual(CommandValidator.validate(#"rm -rf ~/Library/Developer/Xcode/DerivedData/*"#), .ok)
+    }
+
+    func testXcodeDeviceSupportSeedPasses() {
+        XCTAssertEqual(CommandValidator.validate(#"rm -rf ~/Library/Developer/Xcode/iOS\ DeviceSupport/*"#), .ok)
+    }
+
+    func testFindArtifactScanPasses() {
+        XCTAssertEqual(
+            CommandValidator.validate(#"find ~ -path "$HOME/Library" -prune -o -type f -name "*.ipa" -size +100M -exec du -h {} + | sort -rh"#),
+            .ok
+        )
+    }
+
     // MARK: - chmod / chown blocked
 
     func testChmodBlocked() {

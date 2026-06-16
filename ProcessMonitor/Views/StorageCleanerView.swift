@@ -5,6 +5,7 @@ struct StorageCleanerView: View {
 
     @State private var showAddSheet = false
     @State private var editingCommand: CleanupCommand? = nil
+    @State private var fullDiskAccessGranted = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -12,6 +13,14 @@ struct StorageCleanerView: View {
                 title: NSLocalizedString("Storage Cleaner", comment: ""),
                 trailing: AnyView(headerButtons)
             )
+
+            if !fullDiskAccessGranted {
+                fullDiskAccessBanner
+            }
+
+            if store.totalFreedBytes > 0 {
+                totalReclaimedBanner
+            }
 
             if store.commands.isEmpty {
                 emptyState
@@ -21,6 +30,7 @@ struct StorageCleanerView: View {
                         CleanupCommandRow(
                             command: cmd,
                             runState: store.runState(for: cmd.id),
+                            freedBytes: store.freedBytes[cmd.id],
                             anyRunning: store.isAnyRunning,
                             onToggle: {
                                 var updated = cmd
@@ -50,6 +60,64 @@ struct StorageCleanerView: View {
                 onSave: { store.update($0) }
             )
         }
+        .onAppear { fullDiskAccessGranted = FullDiskAccessService.isGranted }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            fullDiskAccessGranted = FullDiskAccessService.isGranted
+        }
+    }
+
+    private var fullDiskAccessBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 13))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.orange)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Full Disk Access required")
+                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                Text("Some caches can't be cleared without it.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button(action: { FullDiskAccessService.openSettings() }) {
+                Text("Open Settings")
+                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.orange.opacity(0.9)))
+                    .foregroundStyle(.white)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.orange.opacity(0.12))
+        )
+    }
+
+    private var totalReclaimedBanner: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "internaldrive.fill")
+                .font(.system(size: 11))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Color(red: 0.20, green: 0.75, blue: 0.55))
+            Text(String(
+                format: NSLocalizedString("Reclaimed %@ total", comment: "Total disk space reclaimed by all cleanup commands"),
+                ByteCountFormatter.string(fromByteCount: store.totalFreedBytes, countStyle: .file)
+            ))
+            .font(.system(.caption, design: .rounded, weight: .semibold))
+            .foregroundStyle(.primary)
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(red: 0.20, green: 0.75, blue: 0.55).opacity(0.12))
+        )
     }
 
     private var headerButtons: some View {
@@ -136,6 +204,7 @@ struct StorageCleanerView: View {
 private struct CleanupCommandRow: View {
     let command: CleanupCommand
     let runState: RunState
+    let freedBytes: Int64?
     let anyRunning: Bool
     let onToggle: () -> Void
     let onEdit: () -> Void
@@ -164,6 +233,10 @@ private struct CleanupCommandRow: View {
                 }
 
                 Spacer()
+
+                if case .success = runState, let freedBytes {
+                    freedPill(freedBytes)
+                }
 
                 Toggle("", isOn: Binding(get: { command.isEnabled }, set: { _ in onToggle() }))
                     .labelsHidden()
@@ -263,6 +336,24 @@ private struct CleanupCommandRow: View {
             if case .failure = newState { outputExpanded = true }
             if case .success = newState { outputExpanded = false }
         }
+    }
+
+    /// Green pill showing bytes reclaimed by this command's last run.
+    private func freedPill(_ bytes: Int64) -> some View {
+        let label = bytes > 0
+            ? String(format: NSLocalizedString("Freed %@", comment: "Disk space freed by a single cleanup command"),
+                     ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))
+            : NSLocalizedString("Nothing to free", comment: "A cleanup command ran but reclaimed no disk space")
+        return Text(label)
+            .font(.system(.caption2, design: .rounded, weight: .semibold))
+            .foregroundStyle(bytes > 0 ? Color(red: 0.16, green: 0.62, blue: 0.45) : Color.secondary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(
+                Capsule().fill((bytes > 0 ? Color(red: 0.20, green: 0.75, blue: 0.55) : Color.secondary)
+                    .opacity(0.14))
+            )
+            .fixedSize()
     }
 
     @ViewBuilder

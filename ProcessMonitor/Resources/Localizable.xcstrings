@@ -12,6 +12,46 @@
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Hinzufügen" } }
       }
     },
+    "Freed %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Freed %@" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Liberado %@" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Liberado %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@ libérés" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ freigegeben" } }
+      }
+    },
+    "Full Disk Access required" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Full Disk Access required" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Acesso Total ao Disco necessário" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Se requiere Acceso Completo al Disco" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Accès complet au disque requis" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Vollständiger Festplattenzugriff erforderlich" } }
+      }
+    },
+    "Nothing to free" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Nothing to free" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Nada para liberar" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Nada que liberar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rien à libérer" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nichts freizugeben" } }
+      }
+    },
+    "Open Settings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Settings" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Abrir Ajustes" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abrir Ajustes" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ouvrir Réglages" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Einstellungen öffnen" } }
+      }
+    },
     "Preferences" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -30,6 +70,16 @@
         "es" : { "stringUnit" : { "state" : "translated", "value" : "Privacidad" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Confidentialité" } },
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Datenschutz" } }
+      }
+    },
+    "Reclaimed %@ total" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reclaimed %@ total" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Recuperado %@ no total" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Liberado %@ en total" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@ libérés au total" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Insgesamt %@ freigegeben" } }
       }
     },
     "Reset" : {
@@ -70,6 +120,16 @@
         "es" : { "stringUnit" : { "state" : "translated", "value" : "Separado por comas. Comparado con nombres de comandos (sin distinción de mayúsculas)." } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Séparé par des virgules. Comparé aux noms de commande des processus (insensible à la casse)." } },
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Komma-getrennt. Wird mit Prozessbefehlsnamen verglichen (Groß-/Kleinschreibung wird ignoriert)." } }
+      }
+    },
+    "Some caches can't be cleared without it." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Some caches can't be cleared without it." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Alguns caches não podem ser limpos sem ele." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Algunas cachés no se pueden borrar sin él." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Certains caches ne peuvent pas être vidés sans cela." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Einige Caches können ohne ihn nicht geleert werden." } }
       }
     },
     "TOTAL" : {
