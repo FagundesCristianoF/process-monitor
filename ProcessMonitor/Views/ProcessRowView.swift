@@ -176,17 +176,27 @@ struct ProcessRowView: View {
         if process.status != .notRunning && process.memoryHistory.count >= 2 {
             let samples = Array(process.memoryHistory.suffix(60))
             let accent: Color = process.status == .overLimit ? .orange : .accentColor
-            Canvas { ctx, size in
-                guard let maxVal = samples.max(), maxVal > 0 else { return }
-                let stepX = samples.count > 1 ? size.width / CGFloat(samples.count - 1) : 0
-                var line = Path()
-                for (i, v) in samples.enumerated() {
-                    let x = CGFloat(i) * stepX
-                    let norm = CGFloat(v / maxVal)
-                    let y = size.height - (norm * (size.height - 1)) - 0.5
-                    if i == 0 { line.move(to: CGPoint(x: x, y: y)) }
-                    else { line.addLine(to: CGPoint(x: x, y: y)) }
-                }
+            if #available(macOS 26.0, *) {
+                sparklineCanvas(samples: samples, accent: accent, fillOpacity: 0.0)
+            } else {
+                sparklineCanvas(samples: samples, accent: accent, fillOpacity: 0.35)
+            }
+        }
+    }
+
+    private func sparklineCanvas(samples: [Double], accent: Color, fillOpacity: Double) -> some View {
+        Canvas { ctx, size in
+            guard let maxVal = samples.max(), maxVal > 0 else { return }
+            let stepX = samples.count > 1 ? size.width / CGFloat(samples.count - 1) : 0
+            var line = Path()
+            for (i, v) in samples.enumerated() {
+                let x = CGFloat(i) * stepX
+                let norm = CGFloat(v / maxVal)
+                let y = size.height - (norm * (size.height - 1)) - 0.5
+                if i == 0 { line.move(to: CGPoint(x: x, y: y)) }
+                else { line.addLine(to: CGPoint(x: x, y: y)) }
+            }
+            if fillOpacity > 0 {
                 var fill = line
                 fill.addLine(to: CGPoint(x: size.width, y: size.height))
                 fill.addLine(to: CGPoint(x: 0, y: size.height))
@@ -194,15 +204,15 @@ struct ProcessRowView: View {
                 ctx.fill(
                     fill,
                     with: .linearGradient(
-                        Gradient(colors: [accent.opacity(0.35), accent.opacity(0.0)]),
+                        Gradient(colors: [accent.opacity(fillOpacity), accent.opacity(0.0)]),
                         startPoint: CGPoint(x: 0, y: 0),
                         endPoint: CGPoint(x: 0, y: size.height)
                     )
                 )
-                ctx.stroke(line, with: .color(accent.opacity(0.85)), lineWidth: 1.2)
             }
-            .frame(width: 56, height: 18)
+            ctx.stroke(line, with: .color(accent.opacity(0.85)), lineWidth: 1.2)
         }
+        .frame(width: 56, height: 18)
     }
 
     @ViewBuilder
@@ -215,17 +225,12 @@ struct ProcessRowView: View {
             }) {
                 Image(systemName: confirmingKill ? "xmark" : "power")
                     .font(.system(size: 10, weight: .bold))
-                    .frame(width: 22, height: 22)
+                    .frame(width: 24, height: 24)
                     .foregroundStyle(confirmingKill ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.red))
-                    .background(
-                        Circle()
-                            .fill(confirmingKill ? AnyShapeStyle(.quaternary) : AnyShapeStyle(Color.red.opacity(0.12)))
-                    )
-                    .overlay(
-                        Circle().stroke(
-                            confirmingKill ? Color.gray.opacity(0.2) : Color.red.opacity(0.25),
-                            lineWidth: 0.5
-                        )
+                    .glassBackground(
+                        in: Circle(),
+                        tint: confirmingKill ? nil : Color.red,
+                        interactive: true
                     )
             }
             .buttonStyle(.plain)
@@ -298,22 +303,10 @@ struct ProcessRowView: View {
         Button(action: action) {
             Text(title)
                 .font(.caption.weight(.semibold))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule().fill(
-                        LinearGradient(
-                            colors: [tint, tint.opacity(0.85)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                )
-                .overlay(
-                    Capsule().stroke(.white.opacity(0.15), lineWidth: 0.5)
-                )
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .glassBackground(in: Capsule(), tint: tint, interactive: true)
                 .foregroundStyle(.white)
-                .shadow(color: tint.opacity(0.35), radius: 3, y: 1)
         }
         .buttonStyle(.plain)
     }
@@ -321,17 +314,27 @@ struct ProcessRowView: View {
     @ViewBuilder
     private var rowBackground: some View {
         if process.status == .overLimit {
-            LinearGradient(
-                colors: [Color.orange.opacity(0.12), Color.orange.opacity(0.03)],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            .overlay(
-                Rectangle()
-                    .fill(Color.orange.opacity(0.6))
-                    .frame(width: 2),
-                alignment: .leading
-            )
+            if #available(macOS 26.0, *) {
+                // On glass windows the gradient bleeds through prominently — accent bar only.
+                Color.clear.overlay(
+                    Rectangle()
+                        .fill(Color.orange.opacity(0.7))
+                        .frame(width: 2),
+                    alignment: .leading
+                )
+            } else {
+                LinearGradient(
+                    colors: [Color.orange.opacity(0.12), Color.orange.opacity(0.03)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .overlay(
+                    Rectangle()
+                        .fill(Color.orange.opacity(0.6))
+                        .frame(width: 2),
+                    alignment: .leading
+                )
+            }
         }
     }
 

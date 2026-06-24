@@ -1,29 +1,41 @@
 import SwiftUI
 import AppKit
 
-private struct WindowOpaqueAccessor: NSViewRepresentable {
+private struct WindowChromeAccessor: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let v = NSView()
         DispatchQueue.main.async {
-            applyOpaque(to: v.window)
+            applyChrome(to: v.window)
         }
         return v
     }
     func updateNSView(_ nsView: NSView, context: Context) {
         DispatchQueue.main.async {
-            applyOpaque(to: nsView.window)
+            applyChrome(to: nsView.window)
         }
     }
 
-    private func applyOpaque(to window: NSWindow?) {
+    private func applyChrome(to window: NSWindow?) {
         guard let window else { return }
-        window.isOpaque = true
-        window.backgroundColor = NSColor.windowBackgroundColor
-        window.hasShadow = true
-        if let contentView = window.contentView {
-            contentView.wantsLayer = true
-            contentView.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
-            disableVibrancy(in: contentView)
+        if #available(macOS 26.0, *) {
+            // Liquid Glass: let the system render a translucent glass popover.
+            // Do NOT neutralize vibrancy or paint an opaque background — that is
+            // what gives the window its glass material on Tahoe.
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            window.hasShadow = true
+        } else {
+            // Pre-Tahoe: force the popover opaque. Desktop vibrancy bleeding
+            // through looked muddy, and hiding the visual-effect view broke
+            // intermittent menu-bar clicks — so we neutralize, never hide.
+            window.isOpaque = true
+            window.backgroundColor = NSColor.windowBackgroundColor
+            window.hasShadow = true
+            if let contentView = window.contentView {
+                contentView.wantsLayer = true
+                contentView.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+                disableVibrancy(in: contentView)
+            }
         }
     }
 
@@ -41,6 +53,76 @@ private struct WindowOpaqueAccessor: NSViewRepresentable {
         for sub in view.subviews {
             disableVibrancy(in: sub)
         }
+    }
+}
+
+// MARK: - System Memory Row
+
+private struct SystemMemoryRow: View {
+    let usedMB: Double
+    let totalMB: Double
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "memorychip.fill")
+                .font(.system(size: 13, weight: .medium))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(isWarning ? .orange : .secondary)
+                .frame(width: 18)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(NSLocalizedString("Memory", comment: "System RAM label"))
+                    .font(.system(.caption, weight: .medium))
+                    .lineLimit(1)
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .fill(.quaternary.opacity(0.5))
+                            .frame(height: 4)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .fill(barColor)
+                            .frame(width: geo.size.width * usedFraction, height: 4)
+                    }
+                }
+                .frame(height: 4)
+            }
+
+            Spacer(minLength: 6)
+
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(String(format: NSLocalizedString("%@ used", comment: "RAM used label. %@ = formatted size"), formatDiskGB(usedMB / 1024)))
+                    .font(.system(.caption2, design: .monospaced, weight: .medium))
+                    .foregroundStyle(isWarning ? .orange : .primary)
+                    .monospacedDigit()
+                Text(formatDiskGB(totalMB / 1024))
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .monospacedDigit()
+            }
+
+            if isWarning {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 10))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.orange)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+    }
+
+    private var usedFraction: Double {
+        guard totalMB > 0 else { return 0 }
+        return min(1, usedMB / totalMB)
+    }
+
+    private var isWarning: Bool { usedFraction > 0.9 }
+
+    private var barColor: Color {
+        let used = usedFraction
+        if used > 0.9 { return .red }
+        if used > 0.8 { return .orange }
+        return Color.accentColor
     }
 }
 
@@ -139,6 +221,7 @@ struct ProcessListView: View {
     @ObservedObject var cleanupStore: CleanupStore
     @AppStorage("processSortOrder") private var sortOrder: String = ProcessSortOrder.active.rawValue
     @AppStorage("filterWarningsOnly") private var filterWarningsOnly: Bool = false
+    @Namespace private var sortNamespace
 
     private var selectedSort: ProcessSortOrder {
         ProcessSortOrder(rawValue: sortOrder) ?? .active
@@ -149,12 +232,9 @@ struct ProcessListView: View {
         let sorted: [MonitoredProcess]
         switch selectedSort {
         case .active:
-            sorted = processes.sorted { a, b in
-                let aWeight = a.status == .notRunning ? 0 : 1
-                let bWeight = b.status == .notRunning ? 0 : 1
-                if aWeight != bWeight { return aWeight > bWeight }
-                return a.totalMemoryMB > b.totalMemoryMB
-            }
+            sorted = processes
+                .filter { $0.status != .notRunning }
+                .sorted { $0.totalMemoryMB > $1.totalMemoryMB }
         case .cpu:
             sorted = processes.sorted { $0.totalCPU > $1.totalCPU }
         case .memory:
@@ -175,16 +255,28 @@ struct ProcessListView: View {
             sortBar
             Divider().opacity(0.5)
             processList
+            Divider().opacity(0.5)
+            memorySection
             if !diskMonitorService.statuses.isEmpty {
-                Divider().opacity(0.5)
+                Divider().opacity(0.4).padding(.horizontal, 14)
                 diskSection
             }
             Divider().opacity(0.5)
             footer
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .windowBackgroundColor))
-        .background(WindowOpaqueAccessor())
+        .background(popoverBackground)
+        .background(WindowChromeAccessor())
+    }
+
+    /// Solid below Tahoe; transparent on macOS 26+ so the system glass shows.
+    @ViewBuilder
+    private var popoverBackground: some View {
+        if #available(macOS 26.0, *) {
+            Color.clear
+        } else {
+            Color(nsColor: .windowBackgroundColor)
+        }
     }
 
     // MARK: - Header
@@ -202,7 +294,8 @@ struct ProcessListView: View {
 
             Spacer()
 
-            HStack(spacing: 2) {
+            LiquidGlassGroup(spacing: 4) {
+            HStack(spacing: 4) {
                 toolbarButton(
                     icon: configStore.isPaused ? "play.fill" : "pause.fill",
                     tint: configStore.isPaused ? .orange : .secondary,
@@ -234,6 +327,7 @@ struct ProcessListView: View {
                     }
                 )
             }
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -250,15 +344,15 @@ struct ProcessListView: View {
             Image(systemName: icon)
                 .font(.system(size: 12, weight: .semibold))
                 .symbolRenderingMode(.hierarchical)
-                .frame(width: 24, height: 22)
+                .frame(width: 26, height: 24)
                 .foregroundStyle(disabled ? AnyShapeStyle(.tertiary) : AnyShapeStyle(tint))
-                .background(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(.quaternary.opacity(0.0001))
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: GlassKit.controlRadius, style: .continuous))
         }
         .buttonStyle(.plain)
+        .glassBackground(
+            in: RoundedRectangle(cornerRadius: GlassKit.controlRadius, style: .continuous),
+            interactive: true
+        )
         .disabled(disabled)
         .help(help)
     }
@@ -267,39 +361,36 @@ struct ProcessListView: View {
 
     private var sortBar: some View {
         VStack(spacing: 6) {
-            HStack(spacing: 2) {
-                ForEach(ProcessSortOrder.allCases, id: \.self) { option in
-                    Button(action: {
-                        withAnimation(.easeOut(duration: 0.15)) {
-                            sortOrder = option.rawValue
+            LiquidGlassGroup(spacing: 6) {
+                HStack(spacing: 2) {
+                    ForEach(ProcessSortOrder.allCases, id: \.self) { option in
+                        let isSelected = selectedSort == option
+                        Button(action: {
+                            withAnimation(.smooth(duration: 0.35)) {
+                                sortOrder = option.rawValue
+                            }
+                        }) {
+                            Label(option.localizedLabel, systemImage: option.icon)
+                                .labelStyle(.titleAndIcon)
+                                .font(.caption2.weight(.medium))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 4)
+                                .frame(maxWidth: .infinity)
+                                .background {
+                                    if isSelected { sortSelectionHighlight }
+                                }
+                                .foregroundStyle(isSelected ? Color.primary : .secondary)
                         }
-                    }) {
-                        Label(option.localizedLabel, systemImage: option.icon)
-                            .labelStyle(.titleAndIcon)
-                            .font(.caption2.weight(.medium))
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .frame(maxWidth: .infinity)
-                            .background(
-                                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                    .fill(.background.opacity(selectedSort == option ? 0.9 : 0))
-                                    .shadow(
-                                        color: .black.opacity(selectedSort == option ? 0.08 : 0),
-                                        radius: 2,
-                                        y: 1
-                                    )
-                            )
-                            .foregroundStyle(selectedSort == option ? Color.primary : .secondary)
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding(3)
             }
-            .padding(2)
             .background(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(.quaternary.opacity(0.4))
+                RoundedRectangle(cornerRadius: GlassKit.controlRadius + 3, style: .continuous)
+                    .fill(.quaternary.opacity(0.35))
             )
 
             Toggle(isOn: $filterWarningsOnly.animation(.easeOut(duration: 0.15))) {
@@ -314,6 +405,23 @@ struct ProcessListView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
+    }
+
+    /// The selected-segment marker. On macOS 26+ it is a single glass capsule
+    /// that morphs between segments (shared `glassEffectID`); below it falls
+    /// back to a soft elevated capsule.
+    @ViewBuilder
+    private var sortSelectionHighlight: some View {
+        if #available(macOS 26.0, *) {
+            Capsule(style: .continuous)
+                .fill(Color.clear)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .glassEffectID("sortSelection", in: sortNamespace)
+        } else {
+            Capsule(style: .continuous)
+                .fill(.background)
+                .shadow(color: .black.opacity(0.10), radius: 2, y: 1)
+        }
     }
 
     // MARK: - Process List
@@ -361,6 +469,15 @@ struct ProcessListView: View {
         }
     }
 
+    // MARK: - Memory Section
+
+    private var memorySection: some View {
+        SystemMemoryRow(
+            usedMB: monitorService.systemMemoryUsedMB,
+            totalMB: monitorService.systemMemoryTotalMB
+        )
+    }
+
     // MARK: - Disk Section
 
     private var diskSection: some View {
@@ -403,12 +520,9 @@ struct ProcessListView: View {
             Button(action: { NSApplication.shared.terminate(nil) }) {
                 Text("Quit")
                     .font(.system(.caption, design: .rounded, weight: .medium))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(.quaternary.opacity(0.5))
-                    )
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 5)
+                    .glassBackground(in: Capsule(), interactive: true)
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)

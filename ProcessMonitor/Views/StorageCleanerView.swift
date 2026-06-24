@@ -83,9 +83,9 @@ struct StorageCleanerView: View {
             Button(action: { FullDiskAccessService.openSettings() }) {
                 Text("Open Settings")
                     .font(.system(.caption, design: .rounded, weight: .semibold))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Color.orange.opacity(0.9)))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 5)
+                    .glassBackground(in: Capsule(), tint: .orange, interactive: true)
                     .foregroundStyle(.white)
             }
             .buttonStyle(.plain)
@@ -136,18 +136,13 @@ struct StorageCleanerView: View {
                     .font(.system(.caption, design: .rounded, weight: .semibold))
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 5)
-            .background(
-                Capsule().fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.20, green: 0.75, blue: 0.55),
-                                 Color(red: 0.20, green: 0.75, blue: 0.55).opacity(0.85)],
-                        startPoint: .top, endPoint: .bottom
-                    )
-                )
+            .padding(.vertical, 6)
+            .glassBackground(
+                in: Capsule(),
+                tint: Color(red: 0.20, green: 0.75, blue: 0.55),
+                interactive: true
             )
             .foregroundStyle(.white)
-            .shadow(color: Color(red: 0.20, green: 0.75, blue: 0.55).opacity(0.3), radius: 3, y: 1)
         }
         .buttonStyle(.plain)
         .disabled(store.isAnyRunning || store.commands.filter(\.isEnabled).isEmpty)
@@ -162,17 +157,9 @@ struct StorageCleanerView: View {
                     .font(.system(.caption, design: .rounded, weight: .semibold))
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 5)
-            .background(
-                Capsule().fill(
-                    LinearGradient(
-                        colors: [.accentColor, .accentColor.opacity(0.85)],
-                        startPoint: .top, endPoint: .bottom
-                    )
-                )
-            )
+            .padding(.vertical, 6)
+            .glassBackground(in: Capsule(), tint: .accentColor, interactive: true)
             .foregroundStyle(.white)
-            .shadow(color: .accentColor.opacity(0.3), radius: 3, y: 1)
         }
         .buttonStyle(.plain)
         .disabled(store.isAnyRunning)

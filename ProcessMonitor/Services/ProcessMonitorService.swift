@@ -11,6 +11,10 @@ final class ProcessMonitorService: ObservableObject {
 
     @Published var processes: [MonitoredProcess] = []
     @Published var totalMemoryMB: Double = 0
+    /// System-wide RAM used (App + Wired + Compressed), in MB.
+    @Published var systemMemoryUsedMB: Double = 0
+    /// Total installed physical RAM, in MB.
+    @Published var systemMemoryTotalMB: Double = Double(ProcessInfo.processInfo.physicalMemory) / 1_048_576
 
     static let historyLength = 60
     static let autoRestartCooldown: TimeInterval = 300 // 5 min between auto-restarts per process
@@ -112,9 +116,11 @@ final class ProcessMonitorService: ObservableObject {
                 guard let self else { return }
                 let rawEntries = self.processEntriesProvider?() ?? self.fetchProcessEntries()
                 let grouped = self.buildGroupedProcesses(from: rawEntries)
+                let ramUsed = self.systemMemoryUsedMBSample()
                 DispatchQueue.main.async {
                     self.processes = grouped
                     self.totalMemoryMB = grouped.reduce(0) { $0 + $1.totalMemoryMB }
+                    self.systemMemoryUsedMB = ramUsed
                     self.checkMemoryLimits(grouped)
                 }
             }
@@ -128,9 +134,11 @@ final class ProcessMonitorService: ObservableObject {
     private func refreshAsync() async {
         let rawEntries = self.processEntriesProvider?() ?? self.fetchProcessEntries()
         let grouped = self.buildGroupedProcesses(from: rawEntries)
+        let ramUsed = self.systemMemoryUsedMBSample()
         await MainActor.run {
             self.processes = grouped
             self.totalMemoryMB = grouped.reduce(0) { $0 + $1.totalMemoryMB }
+            self.systemMemoryUsedMB = ramUsed
             self.checkMemoryLimits(grouped)
         }
     }
@@ -207,6 +215,24 @@ final class ProcessMonitorService: ObservableObject {
     }
 
     // MARK: - Private
+
+    /// System-wide RAM "used" in MB, approximating Activity Monitor's
+    /// Memory Used = App Memory + Wired + Compressed (active + wired + compressed pages).
+    private func systemMemoryUsedMBSample() -> Double {
+        var stats = vm_statistics64_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.stride / MemoryLayout<integer_t>.stride)
+        let result = withUnsafeMutablePointer(to: &stats) { ptr -> kern_return_t in
+            ptr.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { intPtr in
+                host_statistics64(mach_host_self(), HOST_VM_INFO64, intPtr, &count)
+            }
+        }
+        guard result == KERN_SUCCESS else { return systemMemoryUsedMB }
+        let pageSize = Double(vm_kernel_page_size)
+        let usedPages = Double(stats.active_count)
+            + Double(stats.wire_count)
+            + Double(stats.compressor_page_count)
+        return usedPages * pageSize / 1_048_576
+    }
 
     private func fetchProcessEntries() -> [RawProcessEntry] {
         // 1. Enumerate PIDs via proc_listpids.

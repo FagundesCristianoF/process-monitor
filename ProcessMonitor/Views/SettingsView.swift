@@ -83,11 +83,16 @@ private struct SidebarItemView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.clear)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .background {
+                if isSelected {
+                    Color.clear.glassBackground(
+                        in: RoundedRectangle(cornerRadius: GlassKit.controlRadius, style: .continuous),
+                        tint: .accentColor,
+                        interactive: true
+                    )
+                }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: GlassKit.controlRadius, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -437,9 +442,9 @@ struct SettingsView: View {
                         Button(action: { configStore.resetToDefaults() }) {
                             Text("Reset")
                                 .font(.system(.caption, design: .rounded, weight: .medium))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(Capsule().fill(.quaternary.opacity(0.6)))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 5)
+                                .glassBackground(in: Capsule(), interactive: true)
                                 .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
@@ -506,17 +511,9 @@ struct SettingsView: View {
                     .font(.system(.caption, design: .rounded, weight: .semibold))
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 5)
-            .background(
-                Capsule().fill(
-                    LinearGradient(
-                        colors: [.accentColor, .accentColor.opacity(0.85)],
-                        startPoint: .top, endPoint: .bottom
-                    )
-                )
-            )
+            .padding(.vertical, 6)
+            .glassBackground(in: Capsule(), tint: .accentColor, interactive: true)
             .foregroundStyle(.white)
-            .shadow(color: .accentColor.opacity(0.3), radius: 3, y: 1)
         }
         .buttonStyle(.plain)
     }
@@ -1229,16 +1226,8 @@ private struct AddProcessView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(
-                    Capsule().fill(
-                        LinearGradient(
-                            colors: [.accentColor, .accentColor.opacity(0.85)],
-                            startPoint: .top, endPoint: .bottom
-                        )
-                    )
-                )
+                .glassBackground(in: Capsule(), tint: .accentColor, interactive: true)
                 .foregroundStyle(.white)
-                .shadow(color: .accentColor.opacity(0.3), radius: 3, y: 1)
             }
             .buttonStyle(.plain)
         }
