@@ -1,59 +1,45 @@
 import SwiftUI
 import AppKit
 
-private struct WindowChromeAccessor: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        let v = NSView()
-        DispatchQueue.main.async {
-            applyChrome(to: v.window)
-        }
-        return v
-    }
-    func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async {
-            applyChrome(to: nsView.window)
-        }
-    }
-
-    private func applyChrome(to window: NSWindow?) {
+/// Fires reliably on `viewDidMoveToWindow` so `self.window` is never nil.
+private final class ChromeView: NSView {
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
         guard let window else { return }
         if #available(macOS 26.0, *) {
-            // Liquid Glass: let the system render a translucent glass popover.
-            // Do NOT neutralize vibrancy or paint an opaque background — that is
-            // what gives the window its glass material on Tahoe.
+            // Allow the .ultraThinMaterial SwiftUI background to blur
+            // behind-window content (true frosted glass, not raw transparency).
             window.isOpaque = false
             window.backgroundColor = .clear
             window.hasShadow = true
         } else {
-            // Pre-Tahoe: force the popover opaque. Desktop vibrancy bleeding
-            // through looked muddy, and hiding the visual-effect view broke
-            // intermittent menu-bar clicks — so we neutralize, never hide.
+            // Pre-Tahoe: force opaque to avoid muddy desktop vibrancy.
+            // Neutralize (never hide) NSVisualEffectView — hiding it breaks
+            // intermittent menu-bar clicks.
             window.isOpaque = true
             window.backgroundColor = NSColor.windowBackgroundColor
             window.hasShadow = true
-            if let contentView = window.contentView {
-                contentView.wantsLayer = true
-                contentView.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
-                disableVibrancy(in: contentView)
+            if let cv = window.contentView {
+                cv.wantsLayer = true
+                cv.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+                disableVibrancy(in: cv)
             }
         }
     }
 
-    /// Recursively neutralize any NSVisualEffectView so the window no longer
-    /// pulls vibrancy from the desktop behind it.
     private func disableVibrancy(in view: NSView) {
-        if let visual = view as? NSVisualEffectView {
-            visual.material = .windowBackground
-            visual.blendingMode = .behindWindow
-            visual.state = .inactive
-            // Do NOT hide the view — hiding it can leave the popover window
-            // with nothing to render on subsequent shows, intermittently
-            // breaking menu bar clicks.
+        if let vev = view as? NSVisualEffectView {
+            vev.material = .windowBackground
+            vev.blendingMode = .behindWindow
+            vev.state = .inactive
         }
-        for sub in view.subviews {
-            disableVibrancy(in: sub)
-        }
+        view.subviews.forEach { disableVibrancy(in: $0) }
     }
+}
+
+private struct WindowChromeAccessor: NSViewRepresentable {
+    func makeNSView(context: Context) -> ChromeView { ChromeView() }
+    func updateNSView(_ nsView: ChromeView, context: Context) {}
 }
 
 // MARK: - System Memory Row
@@ -269,11 +255,13 @@ struct ProcessListView: View {
         .background(WindowChromeAccessor())
     }
 
-    /// Solid below Tahoe; transparent on macOS 26+ so the system glass shows.
+    /// Frosted glass on macOS 26+; solid on older systems.
+    /// .ultraThinMaterial + non-opaque window = actual frosted-glass blur
+    /// (not raw transparency, which would let raw desktop pixels bleed through).
     @ViewBuilder
     private var popoverBackground: some View {
         if #available(macOS 26.0, *) {
-            Color.clear
+            Rectangle().fill(.ultraThinMaterial)
         } else {
             Color(nsColor: .windowBackgroundColor)
         }
