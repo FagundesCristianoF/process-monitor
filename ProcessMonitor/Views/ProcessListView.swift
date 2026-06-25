@@ -349,33 +349,34 @@ struct ProcessListView: View {
 
     private var sortBar: some View {
         VStack(spacing: 6) {
-            LiquidGlassGroup(spacing: 6) {
-                HStack(spacing: 2) {
-                    ForEach(ProcessSortOrder.allCases, id: \.self) { option in
-                        let isSelected = selectedSort == option
-                        Button(action: {
-                            withAnimation(.smooth(duration: 0.35)) {
-                                sortOrder = option.rawValue
-                            }
-                        }) {
-                            Label(option.localizedLabel, systemImage: option.icon)
-                                .labelStyle(.titleAndIcon)
-                                .font(.caption2.weight(.medium))
-                                .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
-                                .padding(.horizontal, 9)
-                                .padding(.vertical, 4)
-                                .frame(maxWidth: .infinity)
-                                .background {
-                                    if isSelected { sortSelectionHighlight }
-                                }
-                                .foregroundStyle(isSelected ? Color.primary : .secondary)
+            // Plain HStack — GlassEffectContainer + glassEffectID on a .background{}
+            // caused the label content to be absorbed into the glass layer (invisible text).
+            // matchedGeometryEffect gives the same morphing capsule without that issue.
+            HStack(spacing: 2) {
+                ForEach(ProcessSortOrder.allCases, id: \.self) { option in
+                    let isSelected = selectedSort == option
+                    Button(action: {
+                        withAnimation(.smooth(duration: 0.35)) {
+                            sortOrder = option.rawValue
                         }
-                        .buttonStyle(.plain)
+                    }) {
+                        Label(option.localizedLabel, systemImage: option.icon)
+                            .labelStyle(.titleAndIcon)
+                            .font(.caption2.weight(.medium))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 4)
+                            .frame(maxWidth: .infinity)
+                            .background {
+                                if isSelected { sortSelectionHighlight }
+                            }
+                            .foregroundStyle(isSelected ? Color.primary : .secondary)
                     }
+                    .buttonStyle(.plain)
                 }
-                .padding(3)
             }
+            .padding(3)
             .background(
                 RoundedRectangle(cornerRadius: GlassKit.controlRadius + 3, style: .continuous)
                     .fill(.quaternary.opacity(0.35))
@@ -395,21 +396,12 @@ struct ProcessListView: View {
         .padding(.vertical, 6)
     }
 
-    /// The selected-segment marker. On macOS 26+ it is a single glass capsule
-    /// that morphs between segments (shared `glassEffectID`); below it falls
-    /// back to a soft elevated capsule.
-    @ViewBuilder
+    /// Morphing selected-segment capsule via matchedGeometryEffect.
     private var sortSelectionHighlight: some View {
-        if #available(macOS 26.0, *) {
-            Capsule(style: .continuous)
-                .fill(Color.clear)
-                .glassEffect(.regular.interactive(), in: .capsule)
-                .glassEffectID("sortSelection", in: sortNamespace)
-        } else {
-            Capsule(style: .continuous)
-                .fill(.background)
-                .shadow(color: .black.opacity(0.10), radius: 2, y: 1)
-        }
+        Capsule(style: .continuous)
+            .fill(Color.secondary.opacity(0.18))
+            .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
+            .matchedGeometryEffect(id: "sortSelection", in: sortNamespace)
     }
 
     // MARK: - Process List

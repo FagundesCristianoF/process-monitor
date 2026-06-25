@@ -229,7 +229,6 @@ struct ProcessRowView: View {
                     .foregroundStyle(confirmingKill ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.red))
                     .glassBackground(
                         in: Circle(),
-                        tint: confirmingKill ? nil : Color.red,
                         interactive: true
                     )
             }
@@ -303,10 +302,10 @@ struct ProcessRowView: View {
         Button(action: action) {
             Text(title)
                 .font(.caption.weight(.semibold))
+                .foregroundStyle(tint)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 5)
-                .glassBackground(in: Capsule(), tint: tint, interactive: true)
-                .foregroundStyle(.white)
+                .glassBackground(in: Capsule(), interactive: true)
         }
         .buttonStyle(.plain)
     }
