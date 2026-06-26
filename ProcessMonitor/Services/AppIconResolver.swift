@@ -79,12 +79,15 @@ enum AppIconResolver {
     }
 
     /// Returns a cached icon instantly or loads via XPC on a background thread.
+    /// The icon is pre-rasterized into an NSBitmapImageRep so SwiftUI layout
+    /// never triggers a synchronous XPC call to icon services on the main thread.
     static func loadAsync(atPath path: String) async -> NSImage? {
         let cache = AppIconCache.shared
         if let hit = await cache.get(path) { return hit }
         let box = await Task.detached(priority: .userInitiated) { () -> SendableImage? in
             guard FileManager.default.fileExists(atPath: path) else { return nil }
-            return SendableImage(image: NSWorkspace.shared.icon(forFile: path))
+            let icon = NSWorkspace.shared.icon(forFile: path)
+            return SendableImage(image: icon.preRasterized())
         }.value
         guard let img = box?.image else { return nil }
         await cache.set(path, img)
@@ -122,4 +125,34 @@ enum AppIconResolver {
         "/System/Library/CoreServices",
         NSHomeDirectory() + "/Applications"
     ]
+}
+
+private extension NSImage {
+    /// Draws the receiver into a fresh NSBitmapImageRep on the calling thread.
+    /// Returns the bitmap-backed image so subsequent CGImage access from the
+    /// main thread (SwiftUI layout) is a cheap cache hit, never an XPC call.
+    func preRasterized() -> NSImage {
+        let sz = size
+        guard sz.width > 0, sz.height > 0,
+              let bmp = NSBitmapImageRep(
+                bitmapDataPlanes: nil,
+                pixelsWide: Int(sz.width),
+                pixelsHigh: Int(sz.height),
+                bitsPerSample: 8,
+                samplesPerPixel: 4,
+                hasAlpha: true,
+                isPlanar: false,
+                colorSpaceName: .deviceRGB,
+                bytesPerRow: 0,
+                bitsPerPixel: 0
+              )
+        else { return self }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bmp)
+        draw(in: NSRect(origin: .zero, size: sz))
+        NSGraphicsContext.restoreGraphicsState()
+        let out = NSImage(size: sz)
+        out.addRepresentation(bmp)
+        return out
+    }
 }

@@ -1253,26 +1253,22 @@ private struct AddProcessView: View {
         if FileManager.default.fileExists(atPath: "/Applications") {
             panel.directoryURL = URL(fileURLWithPath: "/Applications")
         }
-        if panel.runModal() == .OK, let url = panel.url {
-            applySelectedApp(at: url)
+        // Non-blocking: begin() returns immediately; completion runs on main thread.
+        // Replaces runModal() which blocked the run loop ≥2000 ms (PM-8, PM-7).
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            Task { @MainActor in await self.applySelectedApp(at: url) }
         }
     }
 
-    private func applySelectedApp(at url: URL) {
-        let path = url.path
-        selectedAppPath = path
-        selectedAppIcon = NSWorkspace.shared.icon(forFile: path)
-        let bundle = Bundle(url: url)
-        let bundleName = bundle?.infoDictionary?["CFBundleName"] as? String
-            ?? bundle?.infoDictionary?["CFBundleDisplayName"] as? String
-        let appFileName = url.deletingPathExtension().lastPathComponent
-        if displayName.isEmpty { displayName = bundleName ?? appFileName }
-        let patternCandidate = "\(appFileName).app"
-        if patternsText.isEmpty {
-            patternsText = patternCandidate
-        } else if !patternsText.contains(patternCandidate) {
-            patternsText += ", \(patternCandidate)"
-        }
+    @MainActor
+    private func applySelectedApp(at url: URL) async {
+        let selection = AppPickerSelection(url: url)
+        selectedAppPath = selection.path
+        if displayName.isEmpty { displayName = selection.suggestedName }
+        patternsText = selection.mergedPatterns(into: patternsText)
+        // Async icon load — uses pre-rasterized cache, never blocks main thread (PM-3).
+        selectedAppIcon = await AppIconResolver.loadAsync(atPath: selection.path)
     }
 
     private func addProcess() {

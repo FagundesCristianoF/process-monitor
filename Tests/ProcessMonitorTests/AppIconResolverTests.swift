@@ -98,4 +98,20 @@ final class AppIconResolverTests: XCTestCase {
         XCTAssertNotNil(r2)
         XCTAssertNotNil(r3)
     }
+
+    // MARK: - PM-3 regression: pre-rasterized icons
+
+    func testLoadAsyncReturnsBitmapBackedImage() async {
+        // PM-3: icon must be pre-rasterized on a background thread so SwiftUI
+        // layout never triggers a synchronous XPC call to icon services on the
+        // main thread (ISConcreteIcon → XPC → mach_msg2_trap → hang ≥2000 ms).
+        guard let result = await AppIconResolver.loadAsync(
+            atPath: "/System/Applications/TextEdit.app"
+        ) else {
+            XCTFail("Expected TextEdit icon to load"); return
+        }
+        let hasBitmapRep = result.representations.contains { $0 is NSBitmapImageRep }
+        XCTAssertTrue(hasBitmapRep,
+            "loadAsync must return an NSBitmapImageRep-backed image (PM-3 — no lazy XPC on main thread)")
+    }
 }
