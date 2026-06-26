@@ -2,12 +2,13 @@ import AppKit
 import Foundation
 import SwiftUI
 
-/// Shared SwiftUI view for an app icon with consistent placeholder fallback.
 struct AppIconBadge: View {
     let definition: ProcessDefinition?
     let bundlePath: String?
     var size: CGFloat = 22
     var dimmed: Bool = false
+
+    @State private var resolvedIcon: NSImage?
 
     init(definition: ProcessDefinition?, bundlePath: String? = nil, size: CGFloat = 22, dimmed: Bool = false) {
         self.definition = definition
@@ -18,8 +19,8 @@ struct AppIconBadge: View {
 
     var body: some View {
         Group {
-            if let nsImage = resolveIcon() {
-                Image(nsImage: nsImage)
+            if let icon = resolvedIcon {
+                Image(nsImage: icon)
                     .resizable()
                     .interpolation(.high)
                     .aspectRatio(contentMode: .fit)
@@ -38,77 +39,87 @@ struct AppIconBadge: View {
             }
         }
         .frame(width: size, height: size)
+        .task(id: taskId) {
+            resolvedIcon = await AppIconResolver.loadAsync(definition: definition, bundlePath: bundlePath)
+        }
     }
 
-    private func resolveIcon() -> NSImage? {
-        if let bundlePath, let img = AppIconResolver.icon(atPath: bundlePath) {
-            return img
-        }
-        if let definition, let img = AppIconResolver.icon(for: definition) {
-            return img
-        }
-        return nil
+    private var taskId: String {
+        bundlePath ?? definition?.id ?? ""
     }
 }
 
-enum AppIconResolver {
-    /// Cache icons by resolved path to avoid repeated disk lookups.
-    private static var cache: [String: NSImage] = [:]
+/// Thread-safe icon cache backed by a Swift actor.
+actor AppIconCache {
+    static let shared = AppIconCache()
+    private var store: [String: NSImage] = [:]
 
-    /// Try to find the .app bundle for a process definition and return its icon.
-    /// Falls back to nil; callers should show a placeholder SF Symbol.
-    static func icon(for definition: ProcessDefinition) -> NSImage? {
-        if let path = bundlePath(for: definition), let img = icon(atPath: path) {
-            return img
+    func get(_ key: String) -> NSImage? { store[key] }
+    func set(_ key: String, _ image: NSImage) { store[key] = image }
+}
+
+/// NSImage isn't Sendable before macOS 14; this wrapper opts out of the check.
+/// Safe here because icon images are effectively immutable after creation.
+private struct SendableImage: @unchecked Sendable { let image: NSImage }
+
+enum AppIconResolver {
+    static func loadAsync(definition: ProcessDefinition?, bundlePath: String?) async -> NSImage? {
+        if let bundlePath {
+            return await loadAsync(atPath: bundlePath)
+        }
+        if let definition {
+            return await loadAsync(for: definition)
         }
         return nil
     }
 
-    /// Resolve an icon directly from a known bundle path.
-    static func icon(atPath path: String) -> NSImage? {
-        if let cached = cache[path] { return cached }
-        guard FileManager.default.fileExists(atPath: path) else { return nil }
-        let img = NSWorkspace.shared.icon(forFile: path)
-        cache[path] = img
+    static func loadAsync(for definition: ProcessDefinition) async -> NSImage? {
+        guard let path = await resolvedBundlePath(for: definition) else { return nil }
+        return await loadAsync(atPath: path)
+    }
+
+    /// Returns a cached icon instantly or loads via XPC on a background thread.
+    static func loadAsync(atPath path: String) async -> NSImage? {
+        let cache = AppIconCache.shared
+        if let hit = await cache.get(path) { return hit }
+        let box = await Task.detached(priority: .userInitiated) { () -> SendableImage? in
+            guard FileManager.default.fileExists(atPath: path) else { return nil }
+            return SendableImage(image: NSWorkspace.shared.icon(forFile: path))
+        }.value
+        guard let img = box?.image else { return nil }
+        await cache.set(path, img)
         return img
     }
 
-    /// Best-effort bundle path lookup using common .app locations and patterns.
-    private static func bundlePath(for definition: ProcessDefinition) -> String? {
-        // 1. Patterns may contain "<Name>.app" — try /Applications/<pattern> directly.
-        for pattern in definition.patterns {
-            let trimmed = pattern.trimmingCharacters(in: .whitespaces)
-            if trimmed.lowercased().hasSuffix(".app") {
-                let appName = (trimmed as NSString).lastPathComponent
-                for base in searchPaths {
-                    let candidate = (base as NSString).appendingPathComponent(appName)
-                    if FileManager.default.fileExists(atPath: candidate) {
-                        return candidate
+    private static func resolvedBundlePath(for definition: ProcessDefinition) async -> String? {
+        await Task.detached(priority: .userInitiated) { () -> String? in
+            // 1. Patterns containing "<Name>.app"
+            for pattern in definition.patterns {
+                let trimmed = pattern.trimmingCharacters(in: .whitespaces)
+                if trimmed.lowercased().hasSuffix(".app") {
+                    let appName = (trimmed as NSString).lastPathComponent
+                    for base in searchPaths {
+                        let candidate = (base as NSString).appendingPathComponent(appName)
+                        if FileManager.default.fileExists(atPath: candidate) { return candidate }
                     }
                 }
             }
-        }
-
-        // 2. Try /Applications/<DisplayName>.app
-        let displayCandidate = "\(definition.displayName).app"
-        for base in searchPaths {
-            let candidate = (base as NSString).appendingPathComponent(displayCandidate)
-            if FileManager.default.fileExists(atPath: candidate) {
-                return candidate
+            // 2. <DisplayName>.app in each search path
+            let displayCandidate = "\(definition.displayName).app"
+            for base in searchPaths {
+                let candidate = (base as NSString).appendingPathComponent(displayCandidate)
+                if FileManager.default.fileExists(atPath: candidate) { return candidate }
             }
-        }
-
-        // 3. NSWorkspace lookup by display name (deprecated but still works on Sonoma/Sequoia).
-        if let path = NSWorkspace.shared.fullPath(forApplication: definition.displayName) {
-            return path
-        }
-
-        return nil
+            return nil
+        }.value
     }
 
     private static let searchPaths: [String] = [
         "/Applications",
+        "/Applications/Utilities",
         "/System/Applications",
+        "/System/Applications/Utilities",
+        "/System/Library/CoreServices",
         NSHomeDirectory() + "/Applications"
     ]
 }
