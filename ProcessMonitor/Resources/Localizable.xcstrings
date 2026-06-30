@@ -52,6 +52,36 @@
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Einstellungen öffnen" } }
       }
     },
+    "Processes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Processes" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Processos" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Procesos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Processus" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Prozesse" } }
+      }
+    },
+    "Disk" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Disk" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Disco" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Disco" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Disque" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Festplatte" } }
+      }
+    },
+    "Storage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Storage" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Armazenamento" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Almacenamiento" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Stockage" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Speicher" } }
+      }
+    },
     "Preferences" : {
       "extractionState" : "manual",
       "localizations" : {
