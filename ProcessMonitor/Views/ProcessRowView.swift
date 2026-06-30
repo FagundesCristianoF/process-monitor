@@ -54,13 +54,13 @@ struct ProcessRowView: View {
     private var expandButton: some View {
         if process.status != .notRunning && !process.childGroups.isEmpty {
             Image(systemName: "chevron.right")
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.tertiary)
-                .frame(width: 10)
+                .frame(width: 14)
                 .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 .animation(.easeOut(duration: 0.18), value: isExpanded)
         } else {
-            Spacer().frame(width: 10)
+            Spacer().frame(width: 14)
         }
     }
 
@@ -224,8 +224,8 @@ struct ProcessRowView: View {
                 }
             }) {
                 Image(systemName: confirmingKill ? "xmark" : "power")
-                    .font(.system(size: 10, weight: .bold))
-                    .frame(width: 24, height: 24)
+                    .font(.system(size: 13, weight: .bold))
+                    .frame(width: 32, height: 32)
                     .foregroundStyle(confirmingKill ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.red))
                     .glassBackground(
                         in: Circle(),
@@ -233,9 +233,10 @@ struct ProcessRowView: View {
                     )
             }
             .buttonStyle(.plain)
+            .contentShape(Circle())
             .help(confirmingKill ? NSLocalizedString("Cancel", comment: "") : NSLocalizedString("Kill", comment: ""))
         } else {
-            Spacer().frame(width: 22)
+            Spacer().frame(width: 32)
         }
     }
 
