@@ -283,4 +283,30 @@ final class CleanupStoreTests: XCTestCase {
         wait(for: [exp], timeout: 1)
         XCTAssertNil(store.sizeEstimate(for: cmd.id))
     }
+
+    func testRefreshEstimatesClearsStaleEstimateForDisabledCommand() {
+        let store = makeStore()
+        for c in store.commands { store.remove(id: c.id) }
+
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("pm-estimate-stale-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        var cmd = CleanupCommand(id: UUID(), name: "Test Cleanup", command: "rm -rf \(tempDir.path)", isEnabled: true)
+        store.add(cmd)
+
+        store.refreshEstimates()
+        guard case .computed = waitForEstimate(store, cmd.id) else {
+            return XCTFail("expected a computed estimate before disabling")
+        }
+
+        cmd.isEnabled = false
+        store.update(cmd)
+        store.refreshEstimates()
+
+        let exp = expectation(description: "settle")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { exp.fulfill() }
+        wait(for: [exp], timeout: 1)
+        XCTAssertNil(store.sizeEstimate(for: cmd.id))
+    }
 }

@@ -100,15 +100,19 @@ final class CleanupStore: ObservableObject {
     /// so estimating never delays Run / Run All.
     func refreshEstimates() {
         guard !isEstimating else { return }
-        let targets = commands.filter { $0.isEnabled && CleanupSizeEstimator.measurementCommand(for: $0.command) != nil }
+        let targets: [(cmd: CleanupCommand, measurementCommand: String)] = commands.compactMap { cmd in
+            guard cmd.isEnabled, let measurementCommand = CleanupSizeEstimator.measurementCommand(for: cmd.command) else { return nil }
+            return (cmd, measurementCommand)
+        }
+        let targetIDs = Set(targets.map(\.cmd.id))
+        sizeEstimates = sizeEstimates.filter { targetIDs.contains($0.key) }
         guard !targets.isEmpty else { return }
 
         isEstimating = true
-        for cmd in targets { sizeEstimates[cmd.id] = .pending }
+        for (cmd, _) in targets { sizeEstimates[cmd.id] = .pending }
 
         let group = DispatchGroup()
-        for cmd in targets {
-            guard let measurementCommand = CleanupSizeEstimator.measurementCommand(for: cmd.command) else { continue }
+        for (cmd, measurementCommand) in targets {
             group.enter()
             estimateQueue.async { [weak self] in
                 let bytes = self?.runEstimate(measurementCommand)
