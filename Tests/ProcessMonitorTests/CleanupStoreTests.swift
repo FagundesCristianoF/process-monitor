@@ -214,4 +214,73 @@ final class CleanupStoreTests: XCTestCase {
         if case .success = store.runState(for: a.id) {} else { XCTFail("A should succeed") }
         if case .success = store.runState(for: b.id) {} else { XCTFail("B should succeed") }
     }
+
+    // MARK: - Size estimates
+
+    @discardableResult
+    private func waitForEstimate(_ store: CleanupStore, _ id: UUID, timeout: TimeInterval = 5) -> SizeEstimate? {
+        let exp = expectation(description: "estimate computed")
+        var result: SizeEstimate?
+        func poll() {
+            if case .computed = store.sizeEstimate(for: id) {
+                result = store.sizeEstimate(for: id)
+                exp.fulfill()
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { poll() }
+            }
+        }
+        poll()
+        wait(for: [exp], timeout: timeout)
+        return result
+    }
+
+    func testRefreshEstimatesComputesSizeForPathBasedCommand() {
+        let store = makeStore()
+        for c in store.commands { store.remove(id: c.id) }
+
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("pm-estimate-test-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let file = tempDir.appendingPathComponent("data.bin")
+        try? Data(repeating: 0, count: 8192).write(to: file)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let cmd = CleanupCommand(id: UUID(), name: "Test Cleanup", command: "rm -rf \(tempDir.path)", isEnabled: true)
+        store.add(cmd)
+
+        store.refreshEstimates()
+        XCTAssertEqual(store.sizeEstimate(for: cmd.id), .pending)
+
+        guard case let .computed(bytes) = waitForEstimate(store, cmd.id) else {
+            return XCTFail("expected a computed estimate")
+        }
+        XCTAssertGreaterThan(bytes, 0)
+    }
+
+    func testRefreshEstimatesSkipsCommandWithNoEstimator() {
+        let store = makeStore()
+        for c in store.commands { store.remove(id: c.id) }
+        let cmd = CleanupCommand(id: UUID(), name: "Echo", command: "echo hi", isEnabled: true)
+        store.add(cmd)
+
+        store.refreshEstimates()
+
+        let exp = expectation(description: "settle")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { exp.fulfill() }
+        wait(for: [exp], timeout: 1)
+        XCTAssertNil(store.sizeEstimate(for: cmd.id))
+    }
+
+    func testRefreshEstimatesSkipsDisabledCommands() {
+        let store = makeStore()
+        for c in store.commands { store.remove(id: c.id) }
+        let cmd = CleanupCommand(id: UUID(), name: "Disabled Cleanup", command: "rm -rf /tmp/pm-estimate-disabled-test", isEnabled: false)
+        store.add(cmd)
+
+        store.refreshEstimates()
+
+        let exp = expectation(description: "settle")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { exp.fulfill() }
+        wait(for: [exp], timeout: 1)
+        XCTAssertNil(store.sizeEstimate(for: cmd.id))
+    }
 }
