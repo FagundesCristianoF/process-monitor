@@ -11,7 +11,8 @@ final class SettingsWindowController {
         configStore: ProcessConfigStore,
         launchAtLoginStore: LaunchAtLoginStore,
         diskMonitorService: DiskMonitorService,
-        cleanupStore: CleanupStore
+        cleanupStore: CleanupStore,
+        logWriter: ProcessLogWriterService
     ) {
         dismissMenuBarPopover()
         if let existing = window, existing.isVisible {
@@ -24,7 +25,8 @@ final class SettingsWindowController {
             configStore: configStore,
             launchAtLoginStore: launchAtLoginStore,
             diskMonitorService: diskMonitorService,
-            cleanupStore: cleanupStore
+            cleanupStore: cleanupStore,
+            logWriter: logWriter
         )
         let hostingView = NSHostingView(rootView: settingsView)
         hostingView.frame = NSRect(x: 0, y: 0, width: 700, height: 540)

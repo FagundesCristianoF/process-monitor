@@ -145,6 +145,7 @@ struct SettingsView: View {
     @ObservedObject var launchAtLoginStore: LaunchAtLoginStore
     @ObservedObject var diskMonitorService: DiskMonitorService
     @ObservedObject var cleanupStore: CleanupStore
+    let logWriter: ProcessLogWriterService
 
     @State private var selectedTab: SettingsTab = .processes
     @State private var showAddForm = false
@@ -249,7 +250,10 @@ struct SettingsView: View {
                             autoRestartLimit: configStore.autoRestartLimit(for: def.id),
                             onLimitChanged: { configStore.setLimit($0, for: def.id) },
                             onAutoRestartChanged: { configStore.setAutoRestartLimit($0, for: def.id) },
-                            onRemove: { configStore.removeDefinition(id: def.id) }
+                            isLoggingEnabled: configStore.isLoggingEnabled(for: def.id),
+                            onLoggingToggled: { configStore.setLoggingEnabled($0, for: def.id) },
+                            onRemove: { configStore.removeDefinition(id: def.id) },
+                            logWriter: logWriter
                         )
                         if def.id != configStore.definitions.last?.id {
                             Divider().opacity(0.4).padding(.horizontal, 14)
@@ -617,12 +621,17 @@ private struct DefinitionRow: View {
     let autoRestartLimit: Int?
     let onLimitChanged: (Int) -> Void
     let onAutoRestartChanged: (Int?) -> Void
+    let isLoggingEnabled: Bool
+    let onLoggingToggled: (Bool) -> Void
     let onRemove: () -> Void
+    let logWriter: ProcessLogWriterService
 
     @State private var showConfirmRemove = false
     @State private var limitMB: Double = 0
     @State private var autoRestartEnabled: Bool = false
     @State private var autoRestartMB: Double = 0
+    @State private var loggingEnabled: Bool = false
+    @State private var logFileSizeBytes: Int64? = nil
 
     private static let minMB: Double = 64
     private static let maxMB: Double = 32768
@@ -722,6 +731,44 @@ private struct DefinitionRow: View {
                         .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
+
+                HStack(spacing: 8) {
+                    Label(NSLocalizedString("Log to File", comment: ""), systemImage: "doc.text")
+                        .labelStyle(SettingsLabelStyle())
+                        .font(.caption)
+                    Spacer()
+                    if let bytes = logFileSizeBytes {
+                        let isOverThreshold = bytes >= ProcessLogWriterService.warningThresholdBytes
+                        Text(formatMemory(Double(bytes) / 1_048_576))
+                            .font(.system(.caption2, design: .monospaced, weight: .medium))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill((isOverThreshold ? Color.orange : Color.secondary).opacity(0.12)))
+                            .foregroundStyle(isOverThreshold ? .orange : .secondary)
+
+                        Button(NSLocalizedString("Reveal", comment: "")) {
+                            logWriter.revealLog(forAppID: definition.id)
+                        }
+                        .buttonStyle(.plain)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                        Button(NSLocalizedString("Clear", comment: "")) {
+                            logWriter.clearLog(forAppID: definition.id)
+                            logFileSizeBytes = logWriter.fileSizeBytes(forAppID: definition.id)
+                        }
+                        .buttonStyle(.plain)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    }
+                    Toggle("", isOn: $loggingEnabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                        .onChange(of: loggingEnabled) { enabled in
+                            onLoggingToggled(enabled)
+                        }
+                }
             }
             .animation(.easeOut(duration: 0.18), value: autoRestartEnabled)
         }
@@ -735,6 +782,8 @@ private struct DefinitionRow: View {
             } else {
                 autoRestartMB = Double(currentLimit) * 1.5
             }
+            loggingEnabled = isLoggingEnabled
+            logFileSizeBytes = logWriter.fileSizeBytes(forAppID: definition.id)
         }
     }
 

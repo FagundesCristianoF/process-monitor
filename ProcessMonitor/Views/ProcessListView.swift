@@ -310,7 +310,8 @@ struct ProcessListView: View {
                             configStore: configStore,
                             launchAtLoginStore: launchAtLoginStore,
                             diskMonitorService: diskMonitorService,
-                            cleanupStore: cleanupStore
+                            cleanupStore: cleanupStore,
+                            logWriter: monitorService.logWriter
                         )
                     }
                 )
