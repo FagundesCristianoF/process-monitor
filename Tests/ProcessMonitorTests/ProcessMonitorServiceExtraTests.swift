@@ -154,4 +154,32 @@ final class ProcessMonitorServiceExtraTests: XCTestCase {
         service.restartGroup(makeProcess(appBundlePath: nil))
         service.restartGroup(makeProcess(appBundlePath: "/no/such/App-\(UUID().uuidString).app"))
     }
+
+    // MARK: - Log writer wiring
+
+    func testLogsOnlyEnabledRunningProcesses() throws {
+        let logsDir = tempDir.appendingPathComponent("logs", isDirectory: true)
+        let logWriter = ProcessLogWriterService(logsDirectory: logsDir)
+        let config = makeConfig()
+        config.setLoggingEnabled(true, for: "java") // "cursor" stays disabled
+
+        let entries: [RawProcessEntry] = [
+            RawProcessEntry(pid: 9990, ppid: 1, rssKB: 0, cpuPercent: 5, command: "/usr/bin/java"),
+            RawProcessEntry(pid: 9991, ppid: 1, rssKB: 0, cpuPercent: 5, command: "/Applications/Cursor.app/Contents/MacOS/Cursor")
+        ]
+
+        let service = ProcessMonitorService(
+            configStore: config,
+            notificationService: NotificationService(isHosted: false),
+            pollInterval: 3600,
+            processEntriesProvider: { entries },
+            pollPublisherFactory: dummyFactory,
+            logWriter: logWriter
+        )
+        service.refresh()
+        pollUntil { logWriter.fileSizeBytes(forAppID: "java") != nil }
+
+        XCTAssertNotNil(logWriter.fileSizeBytes(forAppID: "java"))
+        XCTAssertNil(logWriter.fileSizeBytes(forAppID: "cursor"))
+    }
 }

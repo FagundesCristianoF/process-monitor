@@ -33,6 +33,7 @@ final class ProcessMonitorService: ObservableObject {
     private var configCancellables = Set<AnyCancellable>()
     private let configStore: ProcessConfigStore
     private let notificationService: NotificationService
+    let logWriter: ProcessLogWriterService
     private var pollInterval: TimeInterval
     private let processEntriesProvider: ProcessEntriesProvider?
     private let pollPublisherFactory: PollPublisherFactory?
@@ -46,10 +47,12 @@ final class ProcessMonitorService: ObservableObject {
         notificationService: NotificationService = NotificationService(),
         pollInterval: TimeInterval? = nil,
         processEntriesProvider: ProcessEntriesProvider? = nil,
-        pollPublisherFactory: PollPublisherFactory? = nil
+        pollPublisherFactory: PollPublisherFactory? = nil,
+        logWriter: ProcessLogWriterService = ProcessLogWriterService()
     ) {
         self.configStore = configStore
         self.notificationService = notificationService
+        self.logWriter = logWriter
         self.pollInterval = pollInterval ?? configStore.pollIntervalSeconds
         self.processEntriesProvider = processEntriesProvider
         self.pollPublisherFactory = pollPublisherFactory
@@ -116,6 +119,7 @@ final class ProcessMonitorService: ObservableObject {
                 guard let self else { return }
                 let rawEntries = self.processEntriesProvider?() ?? self.fetchProcessEntries()
                 let grouped = self.buildGroupedProcesses(from: rawEntries)
+                self.writeLogs(for: grouped)
                 let ramUsed = self.systemMemoryUsedMBSample()
                 DispatchQueue.main.async {
                     self.processes = grouped
@@ -134,6 +138,7 @@ final class ProcessMonitorService: ObservableObject {
     private func refreshAsync() async {
         let rawEntries = self.processEntriesProvider?() ?? self.fetchProcessEntries()
         let grouped = self.buildGroupedProcesses(from: rawEntries)
+        self.writeLogs(for: grouped)
         let ramUsed = self.systemMemoryUsedMBSample()
         await MainActor.run {
             self.processes = grouped
@@ -529,6 +534,17 @@ final class ProcessMonitorService: ObservableObject {
     static func appBundlePath(from command: String) -> String? {
         guard let range = command.range(of: ".app", options: .caseInsensitive) else { return nil }
         return String(command[command.startIndex..<range.upperBound])
+    }
+
+    /// Appends one CSV row per app the user has opted into file logging,
+    /// skipping apps that aren't currently running. Runs on the same
+    /// background context as the rest of the tick so file I/O never
+    /// touches the main thread.
+    private func writeLogs(for processes: [MonitoredProcess]) {
+        for process in processes where configStore.loggingEnabledIDs.contains(process.definition.id) {
+            guard process.status != .notRunning else { continue }
+            logWriter.log(process: process)
+        }
     }
 
     private func checkMemoryLimits(_ processes: [MonitoredProcess]) {
