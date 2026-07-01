@@ -951,6 +951,76 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Voir sur GitHub" } },
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Auf GitHub ansehen" } }
       }
+    },
+    "Log to File" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Log to File" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Registrar em Arquivo" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Registrar en Archivo" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Enregistrer dans un Fichier" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "In Datei protokollieren" } }
+      }
+    },
+    "Log size: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Log size: %@" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Tamanho do log: %@" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tamaño del registro: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Taille du journal : %@" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Protokollgröße: %@" } }
+      }
+    },
+    "Log file is large" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Log file is large" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Arquivo de log grande" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El archivo de registro es grande" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le fichier journal est volumineux" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Protokolldatei ist groß" } }
+      }
+    },
+    "Reveal Log" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reveal Log" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar Log no Finder" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar Registro en Finder" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher le Journal dans le Finder" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Protokoll im Finder anzeigen" } }
+      }
+    },
+    "Clear Log" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear Log" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Limpar Log" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Borrar Registro" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer le Journal" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Protokoll leeren" } }
+      }
+    },
+    "Reveal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reveal" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Anzeigen" } }
+      }
+    },
+    "Clear" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Limpar" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Borrar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Leeren" } }
+      }
     }
   }
 }
