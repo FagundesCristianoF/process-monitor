@@ -155,6 +155,38 @@ final class ProcessConfigStoreTests: XCTestCase {
         XCTAssertEqual(s2.pollIntervalSeconds, 12)
     }
 
+    // MARK: - Logging
+
+    func testLoggingToggleDefaultsToDisabledAndPersists() {
+        let store = makeStore()
+        XCTAssertFalse(store.isLoggingEnabled(for: "cursor"))
+
+        store.setLoggingEnabled(true, for: "cursor")
+        XCTAssertTrue(store.isLoggingEnabled(for: "cursor"))
+
+        store.setLoggingEnabled(false, for: "cursor")
+        XCTAssertFalse(store.isLoggingEnabled(for: "cursor"))
+    }
+
+    func testRemoveDefinitionClearsLoggingToggle() {
+        let store = makeStore()
+        store.setLoggingEnabled(true, for: "cursor")
+        XCTAssertTrue(store.isLoggingEnabled(for: "cursor"))
+
+        store.removeDefinition(id: "cursor")
+        XCTAssertFalse(store.isLoggingEnabled(for: "cursor"))
+    }
+
+    func testLoggingToggleSurvivesReload() {
+        let fileURL = tempDir.appendingPathComponent("config.json")
+        let suiteName = "test.\(UUID().uuidString)"
+        let first = ProcessConfigStore(configFileURL: fileURL, defaults: UserDefaults(suiteName: suiteName)!)
+        first.setLoggingEnabled(true, for: "java")
+
+        let second = ProcessConfigStore(configFileURL: fileURL, defaults: UserDefaults(suiteName: suiteName)!)
+        XCTAssertTrue(second.isLoggingEnabled(for: "java"))
+    }
+
     // MARK: - Migration
 
     func testMigrationUpdatesStalePatternsAndAddsMissingBuiltIns() throws {

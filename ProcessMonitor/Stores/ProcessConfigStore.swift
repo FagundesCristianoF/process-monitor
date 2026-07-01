@@ -55,6 +55,9 @@ final class ProcessConfigStore: ObservableObject {
     @Published var diskVolumes: [DiskVolume] = [] {
         didSet { if isInitialized { persist() } }
     }
+    @Published var loggingEnabledIDs: Set<String> = [] {
+        didSet { if isInitialized { persist() } }
+    }
     @Published var preferredLanguage: String? {
         didSet {
             if isInitialized {
@@ -79,6 +82,7 @@ final class ProcessConfigStore: ObservableObject {
         var autoRestartLimits: [String: Int]?
         var diskVolumes: [DiskVolume]?
         var notificationRateLimitSeconds: Double?
+        var loggingEnabledIDs: Set<String>?
     }
 
     private func applyLanguagePreference() {
@@ -113,6 +117,7 @@ final class ProcessConfigStore: ObservableObject {
                 : loaded.definitions
             self.limits = loaded.limits
             self.autoRestartLimits = loaded.autoRestartLimits ?? [:]
+            self.loggingEnabledIDs = loaded.loggingEnabledIDs ?? []
             self.patternSchemaVersion = loaded.patternSchemaVersion
         } else {
             // Migrate from UserDefaults (one-time).
@@ -131,6 +136,7 @@ final class ProcessConfigStore: ObservableObject {
             }
             self.limits = loadedLimits
             self.autoRestartLimits = [:]
+            self.loggingEnabledIDs = []
             self.diskVolumes = [.bootDefault]
             self.patternSchemaVersion = defaults.integer(forKey: Self.patternVersionKey)
         }
@@ -198,6 +204,20 @@ final class ProcessConfigStore: ObservableObject {
         }
     }
 
+    // MARK: - Logging
+
+    func isLoggingEnabled(for definitionId: String) -> Bool {
+        loggingEnabledIDs.contains(definitionId)
+    }
+
+    func setLoggingEnabled(_ enabled: Bool, for definitionId: String) {
+        if enabled {
+            loggingEnabledIDs.insert(definitionId)
+        } else {
+            loggingEnabledIDs.remove(definitionId)
+        }
+    }
+
     // MARK: - Definitions
 
     func addDefinition(_ definition: ProcessDefinition) {
@@ -209,6 +229,7 @@ final class ProcessConfigStore: ObservableObject {
     func removeDefinition(id: String) {
         definitions.removeAll { $0.id == id }
         limits.removeValue(forKey: id)
+        loggingEnabledIDs.remove(id)
     }
 
     func updateDefinition(_ definition: ProcessDefinition) {
@@ -254,7 +275,8 @@ final class ProcessConfigStore: ObservableObject {
             preferredLanguage: preferredLanguage,
             autoRestartLimits: autoRestartLimits,
             diskVolumes: diskVolumes,
-            notificationRateLimitSeconds: notificationRateLimitSeconds
+            notificationRateLimitSeconds: notificationRateLimitSeconds,
+            loggingEnabledIDs: loggingEnabledIDs
         )
         do {
             let dir = configFileURL.deletingLastPathComponent()
