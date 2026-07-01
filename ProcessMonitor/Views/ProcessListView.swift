@@ -434,7 +434,10 @@ struct ProcessListView: View {
                                 onKillGroup: { monitorService.killGroup(process) },
                                 onRestart: { monitorService.restartGroup(process) },
                                 onKillChildGroup: { pids in monitorService.killProcesses(pids: pids) },
-                                onKillChild: { pid in monitorService.killProcess(pid: pid) }
+                                onKillChild: { pid in monitorService.killProcess(pid: pid) },
+                                logWriter: monitorService.logWriter,
+                                isLoggingEnabled: configStore.isLoggingEnabled(for: process.definition.id),
+                                onToggleLogging: { configStore.setLoggingEnabled($0, for: process.definition.id) }
                             )
                             if process.id != sorted.last?.id {
                                 Divider()

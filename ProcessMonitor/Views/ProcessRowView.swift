@@ -7,6 +7,9 @@ struct ProcessRowView: View {
     let onRestart: () -> Void
     let onKillChildGroup: ([pid_t]) -> Void
     let onKillChild: (pid_t) -> Void
+    let logWriter: ProcessLogWriterService
+    let isLoggingEnabled: Bool
+    let onToggleLogging: (Bool) -> Void
 
     @State private var isExpanded = false
     @State private var confirmingKill = false
@@ -46,6 +49,51 @@ struct ProcessRowView: View {
             guard process.status != .notRunning, !process.childGroups.isEmpty else { return }
             withAnimation(.easeInOut(duration: 0.22)) {
                 isExpanded.toggle()
+            }
+        }
+        .contextMenu {
+            contextMenuContent
+        }
+    }
+
+    // MARK: - Context Menu
+
+    @ViewBuilder
+    private var contextMenuContent: some View {
+        Button {
+            onToggleLogging(!isLoggingEnabled)
+        } label: {
+            Label(
+                NSLocalizedString("Log to File", comment: "Context menu: enable/disable file logging"),
+                systemImage: isLoggingEnabled ? "checkmark.square" : "square"
+            )
+        }
+
+        if let bytes = logWriter.fileSizeBytes(forAppID: process.definition.id) {
+            Divider()
+
+            let isOverThreshold = bytes >= ProcessLogWriterService.warningThresholdBytes
+            Text(String(
+                format: NSLocalizedString("Log size: %@", comment: "Context menu: current log file size"),
+                formatMemory(Double(bytes) / 1_048_576)
+            ))
+            if isOverThreshold {
+                Label(
+                    NSLocalizedString("Log file is large", comment: "Context menu: log file over 10MB warning"),
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+            }
+
+            Button {
+                logWriter.revealLog(forAppID: process.definition.id)
+            } label: {
+                Label(NSLocalizedString("Reveal Log", comment: "Context menu action"), systemImage: "folder")
+            }
+
+            Button {
+                logWriter.clearLog(forAppID: process.definition.id)
+            } label: {
+                Label(NSLocalizedString("Clear Log", comment: "Context menu action"), systemImage: "trash")
             }
         }
     }
