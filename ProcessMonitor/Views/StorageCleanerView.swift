@@ -375,7 +375,7 @@ private struct CleanupCommandRow: View {
     /// never mistaken for a confirmed result.
     private func estimatePill(_ bytes: Int64) -> some View {
         Text(String(
-            format: NSLocalizedString("~%@", comment: "Estimated disk space a cleanup command would free, shown before it has been run"),
+            format: NSLocalizedString("Estimated size format", comment: "Estimated disk space a cleanup command would free, shown before it has been run"),
             ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
         ))
         .font(.system(.caption2, design: .rounded, weight: .semibold))

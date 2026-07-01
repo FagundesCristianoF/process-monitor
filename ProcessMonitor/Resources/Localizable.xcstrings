@@ -122,7 +122,7 @@
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Wird berechnet…" } }
       }
     },
-    "~%@" : {
+    "Estimated size format" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "~%@" } },
