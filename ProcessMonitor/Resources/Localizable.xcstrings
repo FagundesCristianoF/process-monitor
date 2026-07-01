@@ -112,6 +112,26 @@
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Insgesamt %@ freigegeben" } }
       }
     },
+    "Calculating…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Calculating…" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Calculando…" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Calculando…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Calcul en cours…" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wird berechnet…" } }
+      }
+    },
+    "~%@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "~%@" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "~%@" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "~%@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "~%@" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "~%@" } }
+      }
+    },
     "Reset" : {
       "extractionState" : "manual",
       "localizations" : {

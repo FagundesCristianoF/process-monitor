@@ -8,12 +8,27 @@ enum RunState: Equatable {
     case failure(output: String)
 }
 
+/// A cleanup command's pre-run estimated freed size. `.pending` while the
+/// measurement is running; the key is absent from the store's dictionary
+/// entirely when no estimator applies to that command (permanent — never
+/// becomes `.pending` or `.computed`).
+enum SizeEstimate: Equatable {
+    case pending
+    case computed(Int64)
+}
+
 final class CleanupStore: ObservableObject {
     @Published private(set) var commands: [CleanupCommand] = []
     @Published private(set) var runStates: [UUID: RunState] = [:]
     /// Bytes freed on disk by each command's last run (free-space delta, measured
     /// before/after execution). Accurate because runs are sequential — no overlap.
     @Published private(set) var freedBytes: [UUID: Int64] = [:]
+    /// Pre-run size estimates, keyed by command id. Absent key = no estimator
+    /// applies to that command. Recomputed from scratch each time
+    /// `refreshEstimates()` is called (e.g. every time the Storage tab appears).
+    @Published private(set) var sizeEstimates: [UUID: SizeEstimate] = [:]
+    private var isEstimating = false
+    private let estimateQueue = DispatchQueue(label: "CleanupStore.estimate", qos: .utility, attributes: .concurrent)
 
     private let defaults: UserDefaults
     private static let key = "cleanupCommands"
@@ -29,6 +44,10 @@ final class CleanupStore: ObservableObject {
 
     func runState(for id: UUID) -> RunState {
         runStates[id] ?? .idle
+    }
+
+    func sizeEstimate(for id: UUID) -> SizeEstimate? {
+        sizeEstimates[id]
     }
 
     var isAnyRunning: Bool {
@@ -74,6 +93,42 @@ final class CleanupStore: ObservableObject {
         runAllSequentially(ids: enabled.map(\.id))
     }
 
+    /// Recomputes size estimates for every enabled command that has an applicable
+    /// estimator. Safe to call repeatedly (e.g. on every view appear) — a call
+    /// while a previous pass is still in flight is a no-op, so scans never stack.
+    /// Runs concurrently on a dedicated queue, separate from the cleanup-run queue,
+    /// so estimating never delays Run / Run All.
+    func refreshEstimates() {
+        guard !isEstimating else { return }
+        let targets: [(cmd: CleanupCommand, measurementCommand: String)] = commands.compactMap { cmd in
+            guard cmd.isEnabled, let measurementCommand = CleanupSizeEstimator.measurementCommand(for: cmd.command) else { return nil }
+            return (cmd, measurementCommand)
+        }
+        let targetIDs = Set(targets.map(\.cmd.id))
+        sizeEstimates = sizeEstimates.filter { targetIDs.contains($0.key) }
+        guard !targets.isEmpty else { return }
+
+        isEstimating = true
+        for (cmd, _) in targets { sizeEstimates[cmd.id] = .pending }
+
+        let group = DispatchGroup()
+        for (cmd, measurementCommand) in targets {
+            group.enter()
+            estimateQueue.async { [weak self] in
+                let bytes = self?.runEstimate(measurementCommand)
+                DispatchQueue.main.async {
+                    if let bytes {
+                        self?.sizeEstimates[cmd.id] = .computed(bytes)
+                    } else {
+                        self?.sizeEstimates.removeValue(forKey: cmd.id)
+                    }
+                    group.leave()
+                }
+            }
+        }
+        group.notify(queue: .main) { [weak self] in self?.isEstimating = false }
+    }
+
     // MARK: - Private
 
     /// Runs one command on the serial queue, measuring the disk free-space delta
@@ -101,6 +156,26 @@ final class CleanupStore: ObservableObject {
                 completion?()
             }
         }
+    }
+
+    /// Runs a read-only measurement command and parses its stdout as a byte count.
+    /// Returns nil on any failure (tool missing, non-zero exit, unparsable output) —
+    /// callers treat that as "no estimate available", never as an error.
+    private func runEstimate(_ measurementCommand: String) -> Int64? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        process.arguments = ["-lc", "unsetopt nomatch; " + measurementCommand]
+        let stdoutPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+        process.waitUntilExit()
+        let output = String(data: stdoutPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        return Int64(output.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     private func runAllSequentially(ids: [UUID]) {

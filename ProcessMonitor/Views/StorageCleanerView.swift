@@ -31,6 +31,7 @@ struct StorageCleanerView: View {
                             command: cmd,
                             runState: store.runState(for: cmd.id),
                             freedBytes: store.freedBytes[cmd.id],
+                            sizeEstimate: store.sizeEstimate(for: cmd.id),
                             anyRunning: store.isAnyRunning,
                             onToggle: {
                                 var updated = cmd
@@ -60,7 +61,10 @@ struct StorageCleanerView: View {
                 onSave: { store.update($0) }
             )
         }
-        .onAppear { fullDiskAccessGranted = FullDiskAccessService.isGranted }
+        .onAppear {
+            fullDiskAccessGranted = FullDiskAccessService.isGranted
+            store.refreshEstimates()
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             fullDiskAccessGranted = FullDiskAccessService.isGranted
         }
@@ -192,6 +196,7 @@ private struct CleanupCommandRow: View {
     let command: CleanupCommand
     let runState: RunState
     let freedBytes: Int64?
+    let sizeEstimate: SizeEstimate?
     let anyRunning: Bool
     let onToggle: () -> Void
     let onEdit: () -> Void
@@ -221,9 +226,7 @@ private struct CleanupCommandRow: View {
 
                 Spacer()
 
-                if case .success = runState, let freedBytes {
-                    freedPill(freedBytes)
-                }
+                statusPill
 
                 Toggle("", isOn: Binding(get: { command.isEnabled }, set: { _ in onToggle() }))
                     .labelsHidden()
@@ -341,6 +344,46 @@ private struct CleanupCommandRow: View {
                     .opacity(0.14))
             )
             .fixedSize()
+    }
+
+    /// A run's confirmed result always wins over a stale estimate for that row.
+    @ViewBuilder
+    private var statusPill: some View {
+        if case .success = runState, let freedBytes {
+            freedPill(freedBytes)
+        } else if let sizeEstimate {
+            switch sizeEstimate {
+            case .pending:
+                calculatingPill
+            case .computed(let bytes):
+                estimatePill(bytes)
+            }
+        }
+    }
+
+    private var calculatingPill: some View {
+        Text(NSLocalizedString("Calculating…", comment: "Placeholder shown while a cleanup command's estimated freed space is being computed"))
+            .font(.system(.caption2, design: .rounded, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(Color.secondary.opacity(0.14)))
+            .fixedSize()
+    }
+
+    /// Gray "~X" pill — deliberately not green like `freedPill`, so an estimate is
+    /// never mistaken for a confirmed result.
+    private func estimatePill(_ bytes: Int64) -> some View {
+        Text(String(
+            format: NSLocalizedString("~%@", comment: "Estimated disk space a cleanup command would free, shown before it has been run"),
+            ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+        ))
+        .font(.system(.caption2, design: .rounded, weight: .semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(Capsule().fill(Color.secondary.opacity(0.14)))
+        .fixedSize()
     }
 
     @ViewBuilder
