@@ -83,7 +83,7 @@ final class ProcessLogWriterService {
     private func appendLine(_ line: String, forAppID id: String) {
         guard let handle = fileHandles[id] ?? openOrCreateHandle(forAppID: id) else { return }
         guard let data = line.data(using: .utf8) else { return }
-        try? handle.seekToEnd()
+        _ = try? handle.seekToEnd()
         try? handle.write(contentsOf: data)
     }
 
