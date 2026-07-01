@@ -21,13 +21,15 @@ final class ProcessLogWriterService {
 
     func log(process: MonitoredProcess) {
         guard process.status != .notRunning else { return }
-        let timestamp = dateFormatter.string(from: Date())
         let processCount = process.children.count + process.rootPids.count
-        let line = String(
-            format: "%@,%.1f,%.1f,%.1f,%d\n",
-            timestamp, process.totalCPU, process.totalMemoryMB, process.totalSwapMB, processCount
-        )
         queue.sync {
+            // ISO8601DateFormatter is not documented thread-safe; format
+            // inside the serial queue alongside the other shared state.
+            let timestamp = dateFormatter.string(from: Date())
+            let line = String(
+                format: "%@,%.1f,%.1f,%.1f,%d\n",
+                timestamp, process.totalCPU, process.totalMemoryMB, process.totalSwapMB, processCount
+            )
             appendLine(line, forAppID: process.definition.id)
         }
     }
@@ -41,7 +43,7 @@ final class ProcessLogWriterService {
 
     func clearLog(forAppID id: String) {
         queue.sync {
-            fileHandles[id]?.closeFile()
+            try? fileHandles[id]?.close()
             fileHandles[id] = nil
             writeHeaderOnlyFile(forAppID: id)
         }
@@ -81,7 +83,7 @@ final class ProcessLogWriterService {
     private func appendLine(_ line: String, forAppID id: String) {
         guard let handle = fileHandles[id] ?? openOrCreateHandle(forAppID: id) else { return }
         guard let data = line.data(using: .utf8) else { return }
-        handle.seekToEndOfFile()
+        try? handle.seekToEnd()
         try? handle.write(contentsOf: data)
     }
 
