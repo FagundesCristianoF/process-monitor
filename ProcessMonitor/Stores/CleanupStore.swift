@@ -285,7 +285,7 @@ final class CleanupStore: ObservableObject {
         CleanupCommand(name: "iOS Simulator Data", command: "xcrun simctl shutdown all 2>/dev/null; xcrun simctl erase all",       isEnabled: false),
         CleanupCommand(name: "Homebrew",           command: "brew cleanup --prune=all",                                           isEnabled: true),
         CleanupCommand(name: "npm cache",          command: "npm cache clean --force",                                            isEnabled: true),
-        CleanupCommand(name: "Docker",             command: "docker system prune --volumes -f",                                   isEnabled: false),
+        CleanupCommand(name: "Docker",             command: "docker system prune -a --volumes -f",                                isEnabled: false),
         CleanupCommand(name: "Android Studio",     command: #"rm -rf ~/Library/Application\ Support/Google/AndroidStudio*"#,                   isEnabled: true),
         CleanupCommand(name: "Claude VM Bundles",  command: #"rm -rf ~/Library/Application\ Support/Claude/vm_bundles"#,          isEnabled: true),
         // Generic dev caches — regenerate on next build, safe to clear.
@@ -293,11 +293,27 @@ final class CleanupStore: ObservableObject {
         CleanupCommand(name: "Xcode DerivedData",  command: #"rm -rf ~/Library/Developer/Xcode/DerivedData/*"#,                   isEnabled: true),
         CleanupCommand(name: "Xcode Device Support", command: #"rm -rf ~/Library/Developer/Xcode/iOS\ DeviceSupport/*"#,         isEnabled: false),
         CleanupCommand(name: "CocoaPods Cache",    command: "pod cache clean --all",                                              isEnabled: false),
+        CleanupCommand(name: "Xcode XCTestDevices", command: #"rm -rf ~/Library/Developer/XCTestDevices/*"#,                     isEnabled: true),
+        CleanupCommand(name: "Gradle Shared Cache", command: "rm -rf /Users/Shared/.gradle",                                     isEnabled: true),
+        CleanupCommand(name: "Maven Local Repository", command: #"rm -rf ~/.m2/repository"#,                                    isEnabled: true),
+        CleanupCommand(name: "Swift Package Manager Cache", command: #"rm -rf ~/Library/Caches/org.swift.swiftpm"#,             isEnabled: true),
+        CleanupCommand(name: "Chrome Cache",       command: #"rm -rf ~/Library/Caches/Google"#,                                  isEnabled: true),
+        CleanupCommand(name: "JetBrains Caches",   command: #"rm -rf ~/Library/Caches/JetBrains"#,                              isEnabled: true),
+        CleanupCommand(name: "Spotify Cache",      command: #"rm -rf ~/Library/Caches/com.spotify.client"#,                     isEnabled: true),
+        // Only the disposable subdirs — packages/tools/platforms are installed toolchains, not cache.
+        CleanupCommand(name: "PlatformIO Cache",   command: #"rm -rf ~/.platformio/.cache ~/.platformio/dist"#,                 isEnabled: true),
+        CleanupCommand(name: "Android Studio Cache", command: #"rm -rf ~/.android/cache ~/.android/metrics"#,                   isEnabled: true),
         // Cursor (Electron editor) — caches are safe; chat history is opt-in (destructive).
         CleanupCommand(name: "Cursor Cache",       command: #"rm -rf ~/Library/Application\ Support/Cursor/Cache ~/Library/Application\ Support/Cursor/GPUCache ~/Library/Application\ Support/Cursor/Code\ Cache ~/Library/Application\ Support/Cursor/DawnWebGPUCache ~/Library/Application\ Support/Cursor/DawnGraphiteCache ~/Library/Application\ Support/Cursor/CachedProfilesData"#, isEnabled: true),
         CleanupCommand(name: "Cursor Chat History", command: #"find ~/Library/Application\ Support/Cursor/User/workspaceStorage -name "state.vscdb*" -delete; rm -f ~/Library/Application\ Support/Cursor/User/globalStorage/state.vscdb*"#, isEnabled: false),
+        // ponytail: no size estimate — CleanupSizeEstimator only recognizes literal
+        // "-delete", and prune+exec-rm can't use "-delete" on non-empty dirs.
+        CleanupCommand(name: "Project Build Folders", command: #"find ~ -path "$HOME/Library" -prune -o -type d -name build -prune -exec rm -rf {} + 2>/dev/null"#, isEnabled: false),
         // Read-only scans — answer "what's eating my disk?" without deleting anything.
-        CleanupCommand(name: "Scan: Large Build Folders", command: #"find ~ -path "$HOME/Library" -prune -o -type d \( -name build -o -name DerivedData -o -name node_modules -o -name .gradle -o -name Pods \) -prune -exec du -sh {} + 2>/dev/null | sort -rh | head -30"#, isEnabled: false),
+        // "$HOME/Library" is pruned to skip noisy system caches, but that also hides
+        // DerivedData/Archives (they live under Library) — union in a second find rooted
+        // there so Xcode build folders and archives (which hold dSYMs) are still reported.
+        CleanupCommand(name: "Scan: Large Build Folders", command: #"{ find ~ -path "$HOME/Library" -prune -o -type d \( -name build -o -name node_modules -o -name .gradle -o -name Pods \) -prune -exec du -sh {} + ; find ~/Library/Developer/Xcode/DerivedData ~/Library/Developer/Xcode/Archives -mindepth 1 -maxdepth 1 -type d -exec du -sh {} + ; } 2>/dev/null | sort -rh | head -30"#, isEnabled: false),
         CleanupCommand(name: "Scan: Large Artifacts",     command: #"find ~ -path "$HOME/Library" -prune -o -type f \( -name "*.ipa" -o -name "*.dmg" -o -name "*.hprof" -o -name "*.apk" -o -name "*.aab" -o -name "*.zip" -o -name "*.jar" \) -size +100M -exec du -h {} + 2>/dev/null | sort -rh | head -30"#, isEnabled: false),
     ]
 
@@ -321,6 +337,10 @@ final class CleanupStore: ObservableObject {
     /// is applied the old string no longer matches.
     private static let legacyCommandFixes: [(name: String, old: String, new: String)] = [
         ("iOS Simulator Data", "xcrun simctl erase all", "xcrun simctl shutdown all 2>/dev/null; xcrun simctl erase all"),
+        ("Scan: Large Build Folders",
+         #"find ~ -path "$HOME/Library" -prune -o -type d \( -name build -o -name DerivedData -o -name node_modules -o -name .gradle -o -name Pods \) -prune -exec du -sh {} + 2>/dev/null | sort -rh | head -30"#,
+         #"{ find ~ -path "$HOME/Library" -prune -o -type d \( -name build -o -name node_modules -o -name .gradle -o -name Pods \) -prune -exec du -sh {} + ; find ~/Library/Developer/Xcode/DerivedData ~/Library/Developer/Xcode/Archives -mindepth 1 -maxdepth 1 -type d -exec du -sh {} + ; } 2>/dev/null | sort -rh | head -30"#),
+        ("Docker", "docker system prune --volumes -f", "docker system prune -a --volumes -f"),
     ]
 
     private func repairLegacySeedCommands() {

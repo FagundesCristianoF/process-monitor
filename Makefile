@@ -3,7 +3,10 @@
 APP_NAME = Process Monitor
 BUNDLE_NAME = ProcessMonitor.app
 BUILD_DIR_DEBUG = .build/arm64-apple-macosx/debug
-BUILD_DIR_RELEASE = .build/apple/Products/Release
+# Multi-arch release goes through XCBuild, whose output dir name varies by toolchain
+# version (seen: .build/apple/Products/Release, .build/out/Products/Release). Resolved
+# lazily (recursive `=`, not `:=`) so it's found only after `release` has run.
+BUILD_DIR_RELEASE = $(shell find .build -maxdepth 3 -path "*/Products/Release" -type d 2>/dev/null | head -1)
 EXPORT_DIR = export
 TEAM_ID = VP83767PVX
 XCSTRINGS = ProcessMonitor/Resources/Localizable.xcstrings
