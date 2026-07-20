@@ -1,4 +1,5 @@
 .DS_Store
+.superpowers/
 .build/
 .build-home/
 .build-scratch/
