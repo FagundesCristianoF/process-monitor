@@ -155,6 +155,57 @@ final class ProcessMonitorServiceExtraTests: XCTestCase {
         service.restartGroup(makeProcess(appBundlePath: "/no/such/App-\(UUID().uuidString).app"))
     }
 
+    // MARK: - System memory snapshot
+
+    func testScanSystemMemoryPopulatesSortedFilteredSnapshot() {
+        let realPid = getpid() // this test process — proc_pid_rusage always succeeds against it
+        let deadPid: pid_t = 999_999 // no such process — proc_pid_rusage fails, footprintMB falls back to 0
+
+        let entries: [RawProcessEntry] = [
+            RawProcessEntry(pid: deadPid, ppid: 1, rssKB: 0, cpuPercent: 0, command: "/usr/bin/ghost"),
+            RawProcessEntry(pid: realPid, ppid: 1, rssKB: 0, cpuPercent: 0, command: "/usr/bin/xctest")
+        ]
+
+        let service = ProcessMonitorService(
+            configStore: makeConfig(),
+            notificationService: NotificationService(isHosted: false),
+            pollInterval: 3600,
+            processEntriesProvider: { entries },
+            pollPublisherFactory: dummyFactory
+        )
+
+        service.scanSystemMemory()
+        pollUntil { !service.isScanningSystemMemory }
+
+        XCTAssertEqual(service.systemMemorySnapshot.count, 1)
+        XCTAssertEqual(service.systemMemorySnapshot.first?.id, realPid)
+        XCTAssertEqual(service.systemMemorySnapshot.first?.name, "xctest")
+        XCTAssertGreaterThan(service.systemMemorySnapshot.first?.footprintMB ?? 0, 0)
+    }
+
+    func testScanSystemMemoryCapsAtLimit() {
+        let realPid = getpid()
+        // All entries point at this test process's own real pid (only pid that's
+        // guaranteed to yield a nonzero footprint without special privileges);
+        // duplicate pids are fine here since this test is only checking the cap,
+        // not per-process de-duplication (scanSystemMemory doesn't de-dup).
+        let entries = (0..<15).map { i in
+            RawProcessEntry(pid: realPid, ppid: 1, rssKB: 0, cpuPercent: 0, command: "/usr/bin/xctest\(i)")
+        }
+        let service = ProcessMonitorService(
+            configStore: makeConfig(),
+            notificationService: NotificationService(isHosted: false),
+            pollInterval: 3600,
+            processEntriesProvider: { entries },
+            pollPublisherFactory: dummyFactory
+        )
+
+        service.scanSystemMemory(limit: 5)
+        pollUntil { !service.isScanningSystemMemory }
+
+        XCTAssertEqual(service.systemMemorySnapshot.count, 5)
+    }
+
     // MARK: - Log writer wiring
 
     func testLogsOnlyEnabledRunningProcesses() throws {

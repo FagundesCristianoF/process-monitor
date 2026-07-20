@@ -15,6 +15,10 @@ final class ProcessMonitorService: ObservableObject {
     @Published var systemMemoryUsedMB: Double = 0
     /// Total installed physical RAM, in MB.
     @Published var systemMemoryTotalMB: Double = Double(ProcessInfo.processInfo.physicalMemory) / 1_048_576
+    /// Top-10 system-wide RAM report from the most recent on-demand scan
+    /// (every PID on the system, not just watched apps).
+    @Published var systemMemorySnapshot: [SystemMemoryUser] = []
+    @Published var isScanningSystemMemory: Bool = false
 
     static let historyLength = 60
     static let autoRestartCooldown: TimeInterval = 300 // 5 min between auto-restarts per process
@@ -140,6 +144,32 @@ final class ProcessMonitorService: ObservableObject {
             self.totalMemoryMB = grouped.reduce(0) { $0 + $1.totalMemoryMB }
             self.systemMemoryUsedMB = ramUsed
             self.checkMemoryLimits(grouped)
+        }
+    }
+
+    /// On-demand system-wide RAM report. Scans every PID (not just watched
+    /// apps), reusing the same enumeration and per-PID memory sampling the
+    /// watched-process poll loop already uses. Independent of the poll timer.
+    func scanSystemMemory(limit: Int = 10) {
+        isScanningSystemMemory = true
+        Task.detached(priority: .utility) { [weak self] in
+            guard let self else { return }
+            let entries = self.processEntriesProvider?() ?? self.fetchProcessEntries()
+            let users = entries
+                .map { entry in
+                    SystemMemoryUser(
+                        id: entry.pid,
+                        name: (entry.command as NSString).lastPathComponent,
+                        footprintMB: self.processMemoryUsage(for: entry.pid, fallbackRssKB: entry.rssKB).footprintMB
+                    )
+                }
+                .filter { $0.footprintMB > 0 }
+                .sorted { $0.footprintMB > $1.footprintMB }
+            let top = Array(users.prefix(limit))
+            await MainActor.run {
+                self.systemMemorySnapshot = top
+                self.isScanningSystemMemory = false
+            }
         }
     }
 

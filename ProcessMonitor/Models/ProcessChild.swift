@@ -45,6 +45,16 @@ struct RawProcessEntry {
     let command: String
 }
 
+struct SystemMemoryUser: Identifiable {
+    let id: pid_t
+    let name: String
+    let footprintMB: Double
+
+    var formattedMemory: String {
+        formatMemory(footprintMB)
+    }
+}
+
 func formatMemory(_ mb: Double) -> String {
     if mb >= 1024 {
         return String(format: "%.1f GB", mb / 1024)
