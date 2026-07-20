@@ -47,6 +47,8 @@ private struct WindowChromeAccessor: NSViewRepresentable {
 private struct SystemMemoryRow: View {
     let usedMB: Double
     let totalMB: Double
+    let isExpanded: Bool
+    let onToggleExpand: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
@@ -92,6 +94,16 @@ private struct SystemMemoryRow: View {
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.orange)
             }
+
+            Button(action: onToggleExpand) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 10)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .animation(.easeOut(duration: 0.18), value: isExpanded)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 7)
@@ -109,6 +121,54 @@ private struct SystemMemoryRow: View {
         if used > 0.9 { return .red }
         if used > 0.8 { return .orange }
         return Color.accentColor
+    }
+}
+
+// MARK: - System Memory Snapshot
+
+private struct SystemMemorySnapshotSection: View {
+    let users: [SystemMemoryUser]
+    let isScanning: Bool
+    let onRefresh: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(NSLocalizedString("Top Processes", comment: "Section header for system-wide top RAM consumers"))
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button(action: onRefresh) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if isScanning {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+            } else {
+                ForEach(users) { user in
+                    HStack {
+                        Text(user.name)
+                            .font(.caption2)
+                            .lineLimit(1)
+                        Spacer()
+                        Text(user.formattedMemory)
+                            .font(.system(.caption2, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 2)
+        .padding(.bottom, 7)
     }
 }
 
@@ -208,6 +268,7 @@ struct ProcessListView: View {
     @AppStorage("processSortOrder") private var sortOrder: String = ProcessSortOrder.active.rawValue
     @AppStorage("filterWarningsOnly") private var filterWarningsOnly: Bool = false
     @Namespace private var sortNamespace
+    @State private var isSystemSnapshotExpanded = false
 
     private var selectedSort: ProcessSortOrder {
         ProcessSortOrder(rawValue: sortOrder) ?? .active
@@ -459,10 +520,28 @@ struct ProcessListView: View {
     // MARK: - Memory Section
 
     private var memorySection: some View {
-        SystemMemoryRow(
-            usedMB: monitorService.systemMemoryUsedMB,
-            totalMB: monitorService.systemMemoryTotalMB
-        )
+        VStack(spacing: 0) {
+            SystemMemoryRow(
+                usedMB: monitorService.systemMemoryUsedMB,
+                totalMB: monitorService.systemMemoryTotalMB,
+                isExpanded: isSystemSnapshotExpanded,
+                onToggleExpand: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isSystemSnapshotExpanded.toggle()
+                    }
+                    if isSystemSnapshotExpanded && monitorService.systemMemorySnapshot.isEmpty {
+                        monitorService.scanSystemMemory()
+                    }
+                }
+            )
+            if isSystemSnapshotExpanded {
+                SystemMemorySnapshotSection(
+                    users: monitorService.systemMemorySnapshot,
+                    isScanning: monitorService.isScanningSystemMemory,
+                    onRefresh: { monitorService.scanSystemMemory() }
+                )
+            }
+        }
     }
 
     // MARK: - Disk Section

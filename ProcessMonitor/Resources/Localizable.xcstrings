@@ -2,6 +2,16 @@
   "sourceLanguage" : "en",
   "version" : "1.0",
   "strings" : {
+    "Top Processes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Top Processes" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Principais Processos" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Procesos Principales" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Processus Principaux" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Top-Prozesse" } }
+      }
+    },
     "Add" : {
       "extractionState" : "manual",
       "localizations" : {
