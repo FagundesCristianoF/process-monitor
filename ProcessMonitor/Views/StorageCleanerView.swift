@@ -25,9 +25,11 @@ struct StorageCleanerView: View {
             DetailCard {
                 DiskUsageChartView(
                     entries: store.diskUsageEntries,
+                    suggestions: store.suggestedCleanups(),
                     isScanning: store.isScanningDisk,
-                    lastScanDate: store.lastDiskScanDate,
-                    onScan: { store.scanDiskUsage() }
+                    anyRunning: store.isAnyRunning,
+                    onScan: { store.scanDiskUsage() },
+                    onRunSuggestion: { store.run(id: $0) }
                 )
             }
 
@@ -35,7 +37,7 @@ struct StorageCleanerView: View {
                 emptyState
             } else {
                 DetailCard {
-                    ForEach(store.commands) { cmd in
+                    ForEach(store.commandsSortedByEstimatedSize) { cmd in
                         CleanupCommandRow(
                             command: cmd,
                             runState: store.runState(for: cmd.id),
@@ -51,7 +53,7 @@ struct StorageCleanerView: View {
                             onRun: { store.run(id: cmd.id) },
                             onRemove: { store.remove(id: cmd.id) }
                         )
-                        if cmd.id != store.commands.last?.id {
+                        if cmd.id != store.commandsSortedByEstimatedSize.last?.id {
                             Divider().opacity(0.4).padding(.horizontal, 14)
                         }
                     }

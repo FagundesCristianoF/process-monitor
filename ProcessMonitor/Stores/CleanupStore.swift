@@ -63,6 +63,31 @@ final class CleanupStore: ObservableObject {
         freedBytes.values.reduce(0, +)
     }
 
+    /// Commands ordered by estimated reclaimable size (largest first).
+    var commandsSortedByEstimatedSize: [CleanupCommand] {
+        commands.sorted { estimatedBytes(for: $0.id) > estimatedBytes(for: $1.id) }
+    }
+
+    /// Top folder scans mapped to matching cleanup jobs (largest folders first).
+    func suggestedCleanups(limit: Int = 4) -> [(entry: DiskUsageEntry, command: CleanupCommand)] {
+        var seen = Set<UUID>()
+        var result: [(DiskUsageEntry, CleanupCommand)] = []
+        for entry in diskUsageEntries where entry.bytes >= 50 * 1_048_576 {
+            guard let name = entry.suggestedCleanupCommandName,
+                  let command = commands.first(where: { $0.name == name }),
+                  !seen.contains(command.id) else { continue }
+            seen.insert(command.id)
+            result.append((entry, command))
+            if result.count >= limit { break }
+        }
+        return result
+    }
+
+    func estimatedBytes(for id: UUID) -> Int64 {
+        guard let estimate = sizeEstimates[id], case .computed(let bytes) = estimate else { return 0 }
+        return bytes
+    }
+
     // MARK: - CRUD
 
     func add(_ command: CleanupCommand) {

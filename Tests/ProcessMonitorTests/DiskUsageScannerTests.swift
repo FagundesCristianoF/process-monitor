@@ -31,4 +31,22 @@ final class DiskUsageScannerTests: XCTestCase {
         XCTAssertNil(DiskUsageScanner.parseDuLine(""))
         XCTAssertNil(DiskUsageScanner.parseDuLine("not-a-size"))
     }
+
+    func testSuggestedCleanupForSimulatorDevices() {
+        let entry = DiskUsageEntry(
+            path: "/Users/me/Library/Developer/CoreSimulator/Devices",
+            bytes: 100
+        )
+        XCTAssertEqual(entry.suggestedCleanupCommandName, "iOS Simulators")
+        XCTAssertEqual(entry.displayName, "iOS Simulators")
+    }
+
+    func testSuggestedCleanupForDerivedData() {
+        let entry = DiskUsageEntry(
+            path: "/Users/me/Library/Developer/Xcode/DerivedData",
+            bytes: 100
+        )
+        XCTAssertEqual(entry.suggestedCleanupCommandName, "Xcode DerivedData")
+        XCTAssertEqual(entry.displayName, "DerivedData")
+    }
 }
