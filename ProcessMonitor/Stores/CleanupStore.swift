@@ -384,6 +384,9 @@ final class CleanupStore: ObservableObject {
         CleanupCommand(name: "Scan: Large Artifacts",     command: #"find ~ -path "$HOME/Library" -prune -o -type f \( -name "*.ipa" -o -name "*.dmg" -o -name "*.hprof" -o -name "*.apk" -o -name "*.aab" -o -name "*.zip" -o -name "*.jar" \) -size +100M -exec du -h {} + 2>/dev/null | sort -rh | head -30"#, isEnabled: false),
     ]
 
+    /// Exposed for tests so seed-count assertions stay in sync with defaults.
+    static let seedDefaultsCount = seedDefaults.count
+
     private func load() {
         guard let data = defaults.data(forKey: Self.key),
               let saved = try? JSONDecoder().decode([CleanupCommand].self, from: data),

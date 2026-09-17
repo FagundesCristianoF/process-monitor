@@ -116,12 +116,6 @@ final class ProcessMonitorService: ObservableObject {
     }
 
     func refresh() {
-        if pollPublisherFactory != nil {
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                self?.performRefresh()
-            }
-            return
-        }
         refreshQueue.async { [weak self] in
             self?.performRefresh()
         }
@@ -374,6 +368,7 @@ final class ProcessMonitorService: ObservableObject {
             let limit = configStore.limit(for: def.id)
             guard let roots = rootPidsPerDef[def.id], !roots.isEmpty else {
                 pushHistory(memorySample: 0, cpuSample: 0, for: def.id)
+                let history = historySamples(for: def.id)
                 return MonitoredProcess(
                     id: def.id,
                     definition: def,
@@ -382,8 +377,8 @@ final class ProcessMonitorService: ObservableObject {
                     totalMemoryMB: 0,
                     totalSwapMB: 0,
                     totalCPU: 0,
-                    memoryHistory: memoryHistory[def.id] ?? [],
-                    cpuHistory: cpuHistory[def.id] ?? [],
+                    memoryHistory: history.memory,
+                    cpuHistory: history.cpu,
                     children: [],
                     memoryLimitMB: limit,
                     appBundlePath: nil,
@@ -448,6 +443,7 @@ final class ProcessMonitorService: ObservableObject {
             let status: ProcessStatus = totalMB > Double(limit) ? .overLimit : .running
 
             pushHistory(memorySample: totalMB, cpuSample: totalCPU, for: def.id)
+            let history = historySamples(for: def.id)
 
             return MonitoredProcess(
                 id: def.id,
@@ -457,8 +453,8 @@ final class ProcessMonitorService: ObservableObject {
                 totalMemoryMB: totalMB,
                 totalSwapMB: totalSwapMB,
                 totalCPU: totalCPU,
-                memoryHistory: memoryHistory[def.id] ?? [],
-                cpuHistory: cpuHistory[def.id] ?? [],
+                memoryHistory: history.memory,
+                cpuHistory: history.cpu,
                 children: childItems,
                 memoryLimitMB: limit,
                 appBundlePath: bundlePath,
@@ -502,16 +498,20 @@ final class ProcessMonitorService: ObservableObject {
         return (command as NSString).lastPathComponent
     }
 
+    private func historySamples(for id: String) -> (memory: [Double], cpu: [Double]) {
+        (self.memoryHistory[id] ?? [], self.cpuHistory[id] ?? [])
+    }
+
     private func pushHistory(memorySample: Double, cpuSample: Double, for id: String) {
-        var mem = memoryHistory[id] ?? []
+        var mem = self.memoryHistory[id] ?? []
         mem.append(memorySample)
         if mem.count > Self.historyLength { mem.removeFirst(mem.count - Self.historyLength) }
-        memoryHistory[id] = mem
+        self.memoryHistory[id] = mem
 
-        var cpu = cpuHistory[id] ?? []
+        var cpu = self.cpuHistory[id] ?? []
         cpu.append(cpuSample)
         if cpu.count > Self.historyLength { cpu.removeFirst(cpu.count - Self.historyLength) }
-        cpuHistory[id] = cpu
+        self.cpuHistory[id] = cpu
     }
 
     struct MemoryUsage {

@@ -16,7 +16,7 @@ final class CleanupStoreTests: XCTestCase {
 
     func testSeedsDefaultCommandsOnFirstLoad() {
         let store = makeStore()
-        XCTAssertEqual(store.commands.count, 15)
+        XCTAssertEqual(store.commands.count, CleanupStore.seedDefaultsCount)
         // Note: several seeds (e.g. "iOS Simulator Data", scans) seed with isEnabled: false —
         // don't assert allSatisfy(\.isEnabled)
     }
@@ -26,7 +26,7 @@ final class CleanupStoreTests: XCTestCase {
         let store1 = CleanupStore(defaults: defaults)
         store1.add(CleanupCommand(id: UUID(), name: "Custom", command: "echo hi", isEnabled: true))
         let store2 = CleanupStore(defaults: defaults)
-        XCTAssertEqual(store2.commands.count, 16)
+        XCTAssertEqual(store2.commands.count, CleanupStore.seedDefaultsCount + 1)
     }
 
     // MARK: - Seed merge migration
