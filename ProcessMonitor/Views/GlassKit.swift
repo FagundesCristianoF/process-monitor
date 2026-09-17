@@ -12,14 +12,6 @@ enum GlassKit {
 }
 
 extension View {
-    // ponytail: macOS 27 Beta paints the glassEffect() surface over its label
-    // instead of behind it (icon/text become invisible on glass buttons/toggles).
-    // Force the pre-26 material fallback for the whole 27.x line until Apple fixes
-    // it — re-test on later 27 seeds and drop this once glassEffect renders correctly.
-    private static var isBeta27GlassBroken: Bool {
-        ProcessInfo.processInfo.operatingSystemVersion.majorVersion == 27
-    }
-
     /// Applies a Liquid Glass background clipped to `shape`.
     ///
     /// - Parameters:
@@ -32,11 +24,17 @@ extension View {
         tint: Color? = nil,
         interactive: Bool = false
     ) -> some View {
-        if #available(macOS 26.0, *), !Self.isBeta27GlassBroken {
-            self.glassEffect(
-                Self.makeGlass(tint: tint, interactive: interactive),
-                in: shape
-            )
+        if #available(macOS 26.0, *) {
+            // Apply glass in a background layer so labels/icons stay visible.
+            // Direct `content.glassEffect(...)` composites the glass over the
+            // content on macOS 26+ (release builds), hiding button text.
+            self.background {
+                Color.clear
+                    .glassEffect(
+                        Self.makeGlass(tint: tint, interactive: interactive),
+                        in: shape
+                    )
+            }
         } else {
             self.background {
                 ZStack {

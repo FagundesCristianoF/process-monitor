@@ -57,7 +57,7 @@ extension ProcessDefinition {
         ProcessDefinition(
             id: "xcode",
             displayName: "Xcode",
-            patterns: ["Xcode.app/Contents/MacOS"],
+            patterns: ["Xcode.app"],
             defaultLimitMB: 8192
         )
     ]
@@ -96,7 +96,7 @@ struct MonitoredProcess: Identifiable, Equatable {
 
     var formattedCPU: String {
         guard status != .notRunning else { return "--" }
-        return String(format: "%.0f%%", totalCPU)
+        return String(format: "%.1f%%", totalCPU)
     }
 
     var formattedLimit: String {

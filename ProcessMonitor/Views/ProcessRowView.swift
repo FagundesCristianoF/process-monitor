@@ -3,6 +3,7 @@ import AppKit
 
 struct ProcessRowView: View {
     let process: MonitoredProcess
+    let sortOrder: ProcessSortOrder
     let onKillGroup: () -> Void
     let onRestart: () -> Void
     let onKillChildGroup: ([pid_t]) -> Void
@@ -38,7 +39,7 @@ struct ProcessRowView: View {
             nameLabel
             Spacer(minLength: 6)
             sparkline
-            memoryLabel
+            metricsLabel
             killButton
         }
         .padding(.horizontal, 14)
@@ -194,35 +195,65 @@ struct ProcessRowView: View {
         }
     }
 
-    private var memoryLabel: some View {
+    @ViewBuilder
+    private var metricsLabel: some View {
         VStack(alignment: .trailing, spacing: 1) {
-            HStack(spacing: 6) {
-                if process.status != .notRunning {
-                    Text(process.formattedCPU)
-                        .font(.system(.caption, design: .monospaced, weight: .medium))
-                        .monospacedDigit()
-                        .foregroundStyle(.tertiary)
-                }
+            switch sortOrder {
+            case .cpu:
+                Text(process.formattedCPU)
+                    .font(.system(.callout, design: .monospaced, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+
+            case .memory:
                 Text(process.formattedMemory)
                     .font(.system(.callout, design: .monospaced, weight: .semibold))
                     .monospacedDigit()
                     .foregroundStyle(process.status == .overLimit ? .orange : .primary)
-            }
 
-            if process.status != .notRunning {
-                Text(String(format: NSLocalizedString("%@ swap", comment: "Swap memory label"), process.formattedSwap))
-                    .font(.system(.caption2, design: .monospaced))
-                    .monospacedDigit()
-                    .foregroundStyle(.tertiary)
+                if process.status != .notRunning {
+                    Text(String(format: NSLocalizedString("%@ swap", comment: "Swap memory label"), process.formattedSwap))
+                        .font(.system(.caption2, design: .monospaced))
+                        .monospacedDigit()
+                        .foregroundStyle(.tertiary)
+                }
+
+            default:
+                HStack(spacing: 6) {
+                    if process.status != .notRunning {
+                        Text(process.formattedCPU)
+                            .font(.system(.caption, design: .monospaced, weight: .medium))
+                            .monospacedDigit()
+                            .foregroundStyle(.tertiary)
+                    }
+                    Text(process.formattedMemory)
+                        .font(.system(.callout, design: .monospaced, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(process.status == .overLimit ? .orange : .primary)
+                }
+
+                if process.status != .notRunning {
+                    Text(String(format: NSLocalizedString("%@ swap", comment: "Swap memory label"), process.formattedSwap))
+                        .font(.system(.caption2, design: .monospaced))
+                        .monospacedDigit()
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
         .frame(width: 120, alignment: .trailing)
     }
 
+    private var sparklineSamples: [Double] {
+        switch sortOrder {
+        case .cpu: return process.cpuHistory
+        default: return process.memoryHistory
+        }
+    }
+
     @ViewBuilder
     private var sparkline: some View {
-        if process.status != .notRunning && process.memoryHistory.count >= 2 {
-            let samples = Array(process.memoryHistory.suffix(60))
+        if process.status != .notRunning && sparklineSamples.count >= 2 {
+            let samples = Array(sparklineSamples.suffix(60))
             let accent: Color = process.status == .overLimit ? .orange : .accentColor
             if #available(macOS 26.0, *) {
                 sparklineCanvas(samples: samples, accent: accent, fillOpacity: 0.0)
@@ -394,6 +425,7 @@ struct ProcessRowView: View {
             ForEach(process.childGroups) { group in
                 ProcessChildGroupRowView(
                     group: group,
+                    sortOrder: sortOrder,
                     onKillGroup: { onKillChildGroup(group.pids) },
                     onKillChild: { pid in onKillChild(pid) }
                 )

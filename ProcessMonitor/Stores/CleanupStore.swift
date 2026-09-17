@@ -27,7 +27,11 @@ final class CleanupStore: ObservableObject {
     /// applies to that command. Recomputed from scratch each time
     /// `refreshEstimates()` is called (e.g. every time the Storage tab appears).
     @Published private(set) var sizeEstimates: [UUID: SizeEstimate] = [:]
-    private var isEstimating = false
+    @Published private(set) var diskUsageEntries: [DiskUsageEntry] = []
+    @Published private(set) var isScanningDisk = false
+    @Published private(set) var lastDiskScanDate: Date?
+    @Published private(set) var isEstimating = false
+    private var estimateRefreshPending = false
     private let estimateQueue = DispatchQueue(label: "CleanupStore.estimate", qos: .utility, attributes: .concurrent)
 
     private let defaults: UserDefaults
@@ -64,12 +68,17 @@ final class CleanupStore: ObservableObject {
     func add(_ command: CleanupCommand) {
         commands.append(command)
         persist()
+        refreshEstimates()
     }
 
     func update(_ command: CleanupCommand) {
         guard let idx = commands.firstIndex(where: { $0.id == command.id }) else { return }
+        let previous = commands[idx]
         commands[idx] = command
         persist()
+        if previous.command != command.command || previous.isEnabled != command.isEnabled {
+            refreshEstimates()
+        }
     }
 
     func remove(id: UUID) {
@@ -99,7 +108,10 @@ final class CleanupStore: ObservableObject {
     /// Runs concurrently on a dedicated queue, separate from the cleanup-run queue,
     /// so estimating never delays Run / Run All.
     func refreshEstimates() {
-        guard !isEstimating else { return }
+        guard !isEstimating else {
+            estimateRefreshPending = true
+            return
+        }
         let targets: [(cmd: CleanupCommand, measurementCommand: String)] = commands.compactMap { cmd in
             guard cmd.isEnabled, let measurementCommand = CleanupSizeEstimator.measurementCommand(for: cmd.command) else { return nil }
             return (cmd, measurementCommand)
@@ -126,7 +138,32 @@ final class CleanupStore: ObservableObject {
                 }
             }
         }
-        group.notify(queue: .main) { [weak self] in self?.isEstimating = false }
+        group.notify(queue: .main) { [weak self] in
+            guard let self else { return }
+            self.isEstimating = false
+            if self.estimateRefreshPending {
+                self.estimateRefreshPending = false
+                self.refreshEstimates()
+            }
+        }
+    }
+
+    func scanDiskUsage() {
+        guard !isScanningDisk else { return }
+        isScanningDisk = true
+        estimateQueue.async { [weak self] in
+            let entries = DiskUsageScanner.scanTopFolders(limit: 15)
+            DispatchQueue.main.async {
+                self?.diskUsageEntries = entries
+                self?.lastDiskScanDate = Date()
+                self?.isScanningDisk = false
+            }
+        }
+    }
+
+    func refreshAll() {
+        refreshEstimates()
+        scanDiskUsage()
     }
 
     // MARK: - Private
@@ -154,6 +191,7 @@ final class CleanupStore: ObservableObject {
                     self?.setRunState(.failure(output: combined), for: id)
                 }
                 completion?()
+                self?.refreshEstimates()
             }
         }
     }
@@ -185,7 +223,11 @@ final class CleanupStore: ObservableObject {
             return
         }
         performRun(id: first, command: cmd.command) { [weak self] in
-            self?.runAllSequentially(ids: Array(ids.dropFirst()))
+            let remaining = Array(ids.dropFirst())
+            if remaining.isEmpty {
+                self?.scanDiskUsage()
+            }
+            self?.runAllSequentially(ids: remaining)
         }
     }
 

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProcessChildGroupRowView: View {
     let group: ProcessChildGroup
+    let sortOrder: ProcessSortOrder
     let onKillGroup: () -> Void
     let onKillChild: (pid_t) -> Void
 
@@ -47,23 +48,7 @@ struct ProcessChildGroupRowView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Text(group.formattedCPU)
-                .font(.system(.caption2, design: .monospaced))
-                .monospacedDigit()
-                .foregroundStyle(.tertiary)
-                .frame(width: 32, alignment: .trailing)
-
-            VStack(alignment: .trailing, spacing: 0) {
-                Text(group.formattedMemory)
-                    .font(.system(.caption, design: .monospaced, weight: .medium))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                Text(String(format: NSLocalizedString("%@ sw", comment: "Swap memory short label"), group.formattedSwap))
-                    .font(.system(.caption2, design: .monospaced))
-                    .monospacedDigit()
-                    .foregroundStyle(.tertiary)
-            }
-            .frame(width: 70, alignment: .trailing)
+            groupMetrics
 
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.15)) {
@@ -94,6 +79,50 @@ struct ProcessChildGroupRowView: View {
             withAnimation(.easeInOut(duration: 0.2)) {
                 isExpanded.toggle()
             }
+        }
+    }
+
+    @ViewBuilder
+    private var groupMetrics: some View {
+        switch sortOrder {
+        case .cpu:
+            Text(group.formattedCPU)
+                .font(.system(.caption, design: .monospaced, weight: .medium))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(width: 70, alignment: .trailing)
+
+        case .memory:
+            VStack(alignment: .trailing, spacing: 0) {
+                Text(group.formattedMemory)
+                    .font(.system(.caption, design: .monospaced, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                Text(String(format: NSLocalizedString("%@ sw", comment: "Swap memory short label"), group.formattedSwap))
+                    .font(.system(.caption2, design: .monospaced))
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(width: 70, alignment: .trailing)
+
+        default:
+            Text(group.formattedCPU)
+                .font(.system(.caption2, design: .monospaced))
+                .monospacedDigit()
+                .foregroundStyle(.tertiary)
+                .frame(width: 32, alignment: .trailing)
+
+            VStack(alignment: .trailing, spacing: 0) {
+                Text(group.formattedMemory)
+                    .font(.system(.caption, design: .monospaced, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                Text(String(format: NSLocalizedString("%@ sw", comment: "Swap memory short label"), group.formattedSwap))
+                    .font(.system(.caption2, design: .monospaced))
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(width: 70, alignment: .trailing)
         }
     }
 
@@ -154,7 +183,7 @@ struct ProcessChildGroupRowView: View {
     private var childrenList: some View {
         VStack(spacing: 0) {
             ForEach(group.children) { child in
-                ProcessChildRowView(child: child) {
+                ProcessChildRowView(child: child, sortOrder: sortOrder) {
                     onKillChild(child.id)
                 }
             }

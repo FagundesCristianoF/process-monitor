@@ -22,6 +22,15 @@ struct StorageCleanerView: View {
                 totalReclaimedBanner
             }
 
+            DetailCard {
+                DiskUsageChartView(
+                    entries: store.diskUsageEntries,
+                    isScanning: store.isScanningDisk,
+                    lastScanDate: store.lastDiskScanDate,
+                    onScan: { store.scanDiskUsage() }
+                )
+            }
+
             if store.commands.isEmpty {
                 emptyState
             } else {
@@ -63,7 +72,7 @@ struct StorageCleanerView: View {
         }
         .onAppear {
             fullDiskAccessGranted = FullDiskAccessService.isGranted
-            store.refreshEstimates()
+            store.refreshAll()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             fullDiskAccessGranted = FullDiskAccessService.isGranted
@@ -126,9 +135,30 @@ struct StorageCleanerView: View {
 
     private var headerButtons: some View {
         HStack(spacing: 8) {
+            refreshButton
             runAllButton
             addButton
         }
+    }
+
+    private var refreshButton: some View {
+        Button(action: { store.refreshAll() }) {
+            HStack(spacing: 4) {
+                if store.isEstimating || store.isScanningDisk {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 10, weight: .bold))
+                }
+                Text(NSLocalizedString("Refresh", comment: "Refresh storage estimates button"))
+                    .font(.system(.caption, design: .rounded, weight: .semibold))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .glassBackground(in: Capsule(), interactive: true)
+        }
+        .buttonStyle(.plain)
+        .disabled(store.isAnyRunning || store.isEstimating || store.isScanningDisk)
     }
 
     private var runAllButton: some View {
@@ -346,18 +376,17 @@ private struct CleanupCommandRow: View {
             .fixedSize()
     }
 
-    /// A run's confirmed result always wins over a stale estimate for that row.
     @ViewBuilder
     private var statusPill: some View {
-        if case .success = runState, let freedBytes {
-            freedPill(freedBytes)
-        } else if let sizeEstimate {
+        if let sizeEstimate {
             switch sizeEstimate {
             case .pending:
                 calculatingPill
             case .computed(let bytes):
                 estimatePill(bytes)
             }
+        } else if case .success = runState, let freedBytes {
+            freedPill(freedBytes)
         }
     }
 

@@ -17,7 +17,7 @@ struct ProcessChild: Identifiable, Equatable {
     }
 
     var formattedCPU: String {
-        String(format: "%.0f%%", cpuPercent)
+        String(format: "%.1f%%", cpuPercent)
     }
 }
 
@@ -34,7 +34,7 @@ struct ProcessChildGroup: Identifiable, Equatable {
 
     var formattedMemory: String { formatMemory(totalMemoryMB) }
     var formattedSwap: String { formatMemory(totalSwapMB) }
-    var formattedCPU: String { String(format: "%.0f%%", totalCPU) }
+    var formattedCPU: String { String(format: "%.1f%%", totalCPU) }
 }
 
 struct RawProcessEntry {
