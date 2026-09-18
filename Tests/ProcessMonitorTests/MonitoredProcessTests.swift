@@ -47,7 +47,7 @@ final class MonitoredProcessTests: XCTestCase {
         let p = process(status: .running)
         XCTAssertEqual(p.formattedMemory, "2.0 GB")
         XCTAssertEqual(p.formattedSwap, "512 MB")
-        XCTAssertEqual(p.formattedCPU, "25%")
+        XCTAssertEqual(p.formattedCPU, "25.0%")
         XCTAssertEqual(p.formattedLimit, "4.0 GB")
     }
 

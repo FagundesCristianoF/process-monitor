@@ -282,7 +282,6 @@ struct ProcessListView: View {
 
             Spacer()
 
-            LiquidGlassGroup(spacing: 4) {
             HStack(spacing: 4) {
                 toolbarButton(
                     icon: configStore.isPaused ? "play.fill" : "pause.fill",
@@ -316,7 +315,6 @@ struct ProcessListView: View {
                     }
                 )
             }
-            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -335,13 +333,17 @@ struct ProcessListView: View {
                 .symbolRenderingMode(.hierarchical)
                 .frame(width: 26, height: 24)
                 .foregroundStyle(disabled ? AnyShapeStyle(.tertiary) : AnyShapeStyle(tint))
+                .background {
+                    RoundedRectangle(cornerRadius: GlassKit.controlRadius, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: GlassKit.controlRadius, style: .continuous)
+                                .strokeBorder(.white.opacity(0.10), lineWidth: 0.5)
+                        )
+                }
                 .contentShape(RoundedRectangle(cornerRadius: GlassKit.controlRadius, style: .continuous))
         }
         .buttonStyle(.plain)
-        .glassBackground(
-            in: RoundedRectangle(cornerRadius: GlassKit.controlRadius, style: .continuous),
-            interactive: true
-        )
         .disabled(disabled)
         .help(help)
     }
@@ -432,6 +434,7 @@ struct ProcessListView: View {
                         ForEach(sorted) { process in
                             ProcessRowView(
                                 process: process,
+                                sortOrder: selectedSort,
                                 onKillGroup: { monitorService.killGroup(process) },
                                 onRestart: { monitorService.restartGroup(process) },
                                 onKillChildGroup: { pids in monitorService.killProcesses(pids: pids) },

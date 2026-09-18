@@ -31,7 +31,7 @@ final class ProcessChildTests: XCTestCase {
         let c = child(10, mem: 1536, swap: 100, cpu: 12)
         XCTAssertEqual(c.formattedMemory, "1.5 GB")
         XCTAssertEqual(c.formattedSwap, "100 MB")
-        XCTAssertEqual(c.formattedCPU, "12%")
+        XCTAssertEqual(c.formattedCPU, "12.0%")
     }
 
     // MARK: - ProcessChildGroup aggregation
@@ -49,7 +49,7 @@ final class ProcessChildTests: XCTestCase {
         XCTAssertEqual(group.pids, [1, 2])
         XCTAssertEqual(group.formattedMemory, "300 MB")
         XCTAssertEqual(group.formattedSwap, "30 MB")
-        XCTAssertEqual(group.formattedCPU, "12%")
+        XCTAssertEqual(group.formattedCPU, "12.0%")
     }
 
     // MARK: - RawProcessEntry

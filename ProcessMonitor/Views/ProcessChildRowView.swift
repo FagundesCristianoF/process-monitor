@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProcessChildRowView: View {
     let child: ProcessChild
+    let sortOrder: ProcessSortOrder
     let onKill: () -> Void
 
     @State private var confirmingKill = false
@@ -36,23 +37,7 @@ struct ProcessChildRowView: View {
                 .monospacedDigit()
                 .foregroundStyle(.tertiary)
 
-            Text(child.formattedCPU)
-                .font(.system(.caption2, design: .monospaced))
-                .monospacedDigit()
-                .foregroundStyle(.tertiary)
-                .frame(width: 32, alignment: .trailing)
-
-            VStack(alignment: .trailing, spacing: 0) {
-                Text(child.formattedMemory)
-                    .font(.system(.caption, design: .monospaced))
-                    .monospacedDigit()
-                    .foregroundStyle(.tertiary)
-                Text(String(format: NSLocalizedString("%@ sw", comment: "Swap memory short label"), child.formattedSwap))
-                    .font(.system(.caption2, design: .monospaced))
-                    .monospacedDigit()
-                    .foregroundStyle(.tertiary)
-            }
-            .frame(width: 70, alignment: .trailing)
+            childMetrics
 
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.15)) {
@@ -70,6 +55,50 @@ struct ProcessChildRowView: View {
         .padding(.leading, 28)
         .padding(.trailing, 14)
         .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private var childMetrics: some View {
+        switch sortOrder {
+        case .cpu:
+            Text(child.formattedCPU)
+                .font(.system(.caption, design: .monospaced))
+                .monospacedDigit()
+                .foregroundStyle(.tertiary)
+                .frame(width: 70, alignment: .trailing)
+
+        case .memory:
+            VStack(alignment: .trailing, spacing: 0) {
+                Text(child.formattedMemory)
+                    .font(.system(.caption, design: .monospaced))
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
+                Text(String(format: NSLocalizedString("%@ sw", comment: "Swap memory short label"), child.formattedSwap))
+                    .font(.system(.caption2, design: .monospaced))
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(width: 70, alignment: .trailing)
+
+        default:
+            Text(child.formattedCPU)
+                .font(.system(.caption2, design: .monospaced))
+                .monospacedDigit()
+                .foregroundStyle(.tertiary)
+                .frame(width: 32, alignment: .trailing)
+
+            VStack(alignment: .trailing, spacing: 0) {
+                Text(child.formattedMemory)
+                    .font(.system(.caption, design: .monospaced))
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
+                Text(String(format: NSLocalizedString("%@ sw", comment: "Swap memory short label"), child.formattedSwap))
+                    .font(.system(.caption2, design: .monospaced))
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(width: 70, alignment: .trailing)
+        }
     }
 
     private var confirmBar: some View {

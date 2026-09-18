@@ -27,6 +27,8 @@ final class ProcessMonitorService: ObservableObject {
     // CPU sampling state for native libproc-based sampling.
     private var previousCPUTotals: [pid_t: UInt64] = [:]
     private var previousSampleTime: TimeInterval = 0
+    private let sampleLock = NSLock()
+    private let refreshQueue = DispatchQueue(label: "com.cristianofagundes.ProcessMonitor.refresh", qos: .utility)
 
     private var timer: AnyCancellable?
     private var pollTask: Task<Void, Never>?
@@ -91,7 +93,7 @@ final class ProcessMonitorService: ObservableObject {
         let interval = pollInterval
         pollTask = Task.detached(priority: .utility) { [weak self] in
             while !Task.isCancelled {
-                await self?.refreshAsync()
+                await self?.performRefreshOnQueue()
                 let ns = UInt64(max(0.1, interval) * 1_000_000_000)
                 try? await Task.sleep(nanoseconds: ns)
             }
@@ -114,33 +116,26 @@ final class ProcessMonitorService: ObservableObject {
     }
 
     func refresh() {
-        if pollPublisherFactory != nil {
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                guard let self else { return }
-                let rawEntries = self.processEntriesProvider?() ?? self.fetchProcessEntries()
-                let grouped = self.buildGroupedProcesses(from: rawEntries)
-                self.writeLogs(for: grouped)
-                let ramUsed = self.systemMemoryUsedMBSample()
-                DispatchQueue.main.async {
-                    self.processes = grouped
-                    self.totalMemoryMB = grouped.reduce(0) { $0 + $1.totalMemoryMB }
-                    self.systemMemoryUsedMB = ramUsed
-                    self.checkMemoryLimits(grouped)
-                }
-            }
-            return
-        }
-        Task.detached(priority: .utility) { [weak self] in
-            await self?.refreshAsync()
+        refreshQueue.async { [weak self] in
+            self?.performRefresh()
         }
     }
 
-    private func refreshAsync() async {
+    private func performRefreshOnQueue() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            refreshQueue.async { [weak self] in
+                self?.performRefresh()
+                continuation.resume()
+            }
+        }
+    }
+
+    private func performRefresh() {
         let rawEntries = self.processEntriesProvider?() ?? self.fetchProcessEntries()
         let grouped = self.buildGroupedProcesses(from: rawEntries)
         self.writeLogs(for: grouped)
         let ramUsed = self.systemMemoryUsedMBSample()
-        await MainActor.run {
+        DispatchQueue.main.async {
             self.processes = grouped
             self.totalMemoryMB = grouped.reduce(0) { $0 + $1.totalMemoryMB }
             self.systemMemoryUsedMB = ramUsed
@@ -240,6 +235,9 @@ final class ProcessMonitorService: ObservableObject {
     }
 
     private func fetchProcessEntries() -> [RawProcessEntry] {
+        sampleLock.lock()
+        defer { sampleLock.unlock() }
+
         // 1. Enumerate PIDs via proc_listpids.
         let initialCount = proc_listpids(UInt32(PROC_ALL_PIDS), 0, nil, 0)
         guard initialCount > 0 else { return [] }
@@ -370,6 +368,7 @@ final class ProcessMonitorService: ObservableObject {
             let limit = configStore.limit(for: def.id)
             guard let roots = rootPidsPerDef[def.id], !roots.isEmpty else {
                 pushHistory(memorySample: 0, cpuSample: 0, for: def.id)
+                let history = historySamples(for: def.id)
                 return MonitoredProcess(
                     id: def.id,
                     definition: def,
@@ -378,8 +377,8 @@ final class ProcessMonitorService: ObservableObject {
                     totalMemoryMB: 0,
                     totalSwapMB: 0,
                     totalCPU: 0,
-                    memoryHistory: memoryHistory[def.id] ?? [],
-                    cpuHistory: cpuHistory[def.id] ?? [],
+                    memoryHistory: history.memory,
+                    cpuHistory: history.cpu,
                     children: [],
                     memoryLimitMB: limit,
                     appBundlePath: nil,
@@ -400,10 +399,15 @@ final class ProcessMonitorService: ObservableObject {
             let rootSet = Set(roots)
             let uniqueDescendants = descendants.filter { !rootSet.contains($0.pid) }
 
+            // Sum every process whose executable path matches this definition
+            // (e.g. all Xcode.app helpers, including XPC services parented by launchd).
+            let matchingEntries = entries.filter { def.matches(command: $0.command) }
+            let matchingPidSet = Set(matchingEntries.map(\.pid))
+
             var rootMemMB = 0.0
             var rootSwapMB = 0.0
             var rootCPU = 0.0
-            for entry in rootEntries {
+            for entry in matchingEntries {
                 let usage = processMemoryUsage(for: entry.pid, fallbackRssKB: entry.rssKB)
                 rootMemMB += usage.footprintMB
                 rootSwapMB += usage.swapMB
@@ -414,7 +418,7 @@ final class ProcessMonitorService: ObservableObject {
             var childSwapMB = 0.0
             var childCPU = 0.0
             var childItems: [ProcessChild] = []
-            for entry in uniqueDescendants {
+            for entry in uniqueDescendants where !matchingPidSet.contains(entry.pid) {
                 let usage = processMemoryUsage(for: entry.pid, fallbackRssKB: entry.rssKB)
                 childMemMB += usage.footprintMB
                 childSwapMB += usage.swapMB
@@ -439,6 +443,7 @@ final class ProcessMonitorService: ObservableObject {
             let status: ProcessStatus = totalMB > Double(limit) ? .overLimit : .running
 
             pushHistory(memorySample: totalMB, cpuSample: totalCPU, for: def.id)
+            let history = historySamples(for: def.id)
 
             return MonitoredProcess(
                 id: def.id,
@@ -448,8 +453,8 @@ final class ProcessMonitorService: ObservableObject {
                 totalMemoryMB: totalMB,
                 totalSwapMB: totalSwapMB,
                 totalCPU: totalCPU,
-                memoryHistory: memoryHistory[def.id] ?? [],
-                cpuHistory: cpuHistory[def.id] ?? [],
+                memoryHistory: history.memory,
+                cpuHistory: history.cpu,
                 children: childItems,
                 memoryLimitMB: limit,
                 appBundlePath: bundlePath,
@@ -493,16 +498,20 @@ final class ProcessMonitorService: ObservableObject {
         return (command as NSString).lastPathComponent
     }
 
+    private func historySamples(for id: String) -> (memory: [Double], cpu: [Double]) {
+        (self.memoryHistory[id] ?? [], self.cpuHistory[id] ?? [])
+    }
+
     private func pushHistory(memorySample: Double, cpuSample: Double, for id: String) {
-        var mem = memoryHistory[id] ?? []
+        var mem = self.memoryHistory[id] ?? []
         mem.append(memorySample)
         if mem.count > Self.historyLength { mem.removeFirst(mem.count - Self.historyLength) }
-        memoryHistory[id] = mem
+        self.memoryHistory[id] = mem
 
-        var cpu = cpuHistory[id] ?? []
+        var cpu = self.cpuHistory[id] ?? []
         cpu.append(cpuSample)
         if cpu.count > Self.historyLength { cpu.removeFirst(cpu.count - Self.historyLength) }
-        cpuHistory[id] = cpu
+        self.cpuHistory[id] = cpu
     }
 
     struct MemoryUsage {

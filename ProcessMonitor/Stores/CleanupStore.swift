@@ -27,7 +27,11 @@ final class CleanupStore: ObservableObject {
     /// applies to that command. Recomputed from scratch each time
     /// `refreshEstimates()` is called (e.g. every time the Storage tab appears).
     @Published private(set) var sizeEstimates: [UUID: SizeEstimate] = [:]
-    private var isEstimating = false
+    @Published private(set) var diskUsageEntries: [DiskUsageEntry] = []
+    @Published private(set) var isScanningDisk = false
+    @Published private(set) var lastDiskScanDate: Date?
+    @Published private(set) var isEstimating = false
+    private var estimateRefreshPending = false
     private let estimateQueue = DispatchQueue(label: "CleanupStore.estimate", qos: .utility, attributes: .concurrent)
 
     private let defaults: UserDefaults
@@ -59,17 +63,47 @@ final class CleanupStore: ObservableObject {
         freedBytes.values.reduce(0, +)
     }
 
+    /// Commands ordered by estimated reclaimable size (largest first).
+    var commandsSortedByEstimatedSize: [CleanupCommand] {
+        commands.sorted { estimatedBytes(for: $0.id) > estimatedBytes(for: $1.id) }
+    }
+
+    /// Top folder scans mapped to matching cleanup jobs (largest folders first).
+    func suggestedCleanups(limit: Int = 4) -> [(entry: DiskUsageEntry, command: CleanupCommand)] {
+        var seen = Set<UUID>()
+        var result: [(DiskUsageEntry, CleanupCommand)] = []
+        for entry in diskUsageEntries where entry.bytes >= 50 * 1_048_576 {
+            guard let name = entry.suggestedCleanupCommandName,
+                  let command = commands.first(where: { $0.name == name }),
+                  !seen.contains(command.id) else { continue }
+            seen.insert(command.id)
+            result.append((entry, command))
+            if result.count >= limit { break }
+        }
+        return result
+    }
+
+    func estimatedBytes(for id: UUID) -> Int64 {
+        guard let estimate = sizeEstimates[id], case .computed(let bytes) = estimate else { return 0 }
+        return bytes
+    }
+
     // MARK: - CRUD
 
     func add(_ command: CleanupCommand) {
         commands.append(command)
         persist()
+        refreshEstimates()
     }
 
     func update(_ command: CleanupCommand) {
         guard let idx = commands.firstIndex(where: { $0.id == command.id }) else { return }
+        let previous = commands[idx]
         commands[idx] = command
         persist()
+        if previous.command != command.command || previous.isEnabled != command.isEnabled {
+            refreshEstimates()
+        }
     }
 
     func remove(id: UUID) {
@@ -99,7 +133,10 @@ final class CleanupStore: ObservableObject {
     /// Runs concurrently on a dedicated queue, separate from the cleanup-run queue,
     /// so estimating never delays Run / Run All.
     func refreshEstimates() {
-        guard !isEstimating else { return }
+        guard !isEstimating else {
+            estimateRefreshPending = true
+            return
+        }
         let targets: [(cmd: CleanupCommand, measurementCommand: String)] = commands.compactMap { cmd in
             guard cmd.isEnabled, let measurementCommand = CleanupSizeEstimator.measurementCommand(for: cmd.command) else { return nil }
             return (cmd, measurementCommand)
@@ -126,7 +163,32 @@ final class CleanupStore: ObservableObject {
                 }
             }
         }
-        group.notify(queue: .main) { [weak self] in self?.isEstimating = false }
+        group.notify(queue: .main) { [weak self] in
+            guard let self else { return }
+            self.isEstimating = false
+            if self.estimateRefreshPending {
+                self.estimateRefreshPending = false
+                self.refreshEstimates()
+            }
+        }
+    }
+
+    func scanDiskUsage() {
+        guard !isScanningDisk else { return }
+        isScanningDisk = true
+        estimateQueue.async { [weak self] in
+            let entries = DiskUsageScanner.scanTopFolders(limit: 15)
+            DispatchQueue.main.async {
+                self?.diskUsageEntries = entries
+                self?.lastDiskScanDate = Date()
+                self?.isScanningDisk = false
+            }
+        }
+    }
+
+    func refreshAll() {
+        refreshEstimates()
+        scanDiskUsage()
     }
 
     // MARK: - Private
@@ -154,6 +216,7 @@ final class CleanupStore: ObservableObject {
                     self?.setRunState(.failure(output: combined), for: id)
                 }
                 completion?()
+                self?.refreshEstimates()
             }
         }
     }
@@ -185,7 +248,11 @@ final class CleanupStore: ObservableObject {
             return
         }
         performRun(id: first, command: cmd.command) { [weak self] in
-            self?.runAllSequentially(ids: Array(ids.dropFirst()))
+            let remaining = Array(ids.dropFirst())
+            if remaining.isEmpty {
+                self?.scanDiskUsage()
+            }
+            self?.runAllSequentially(ids: remaining)
         }
     }
 
@@ -316,6 +383,9 @@ final class CleanupStore: ObservableObject {
         CleanupCommand(name: "Scan: Large Build Folders", command: #"{ find ~ -path "$HOME/Library" -prune -o -type d \( -name build -o -name node_modules -o -name .gradle -o -name Pods \) -prune -exec du -sh {} + ; find ~/Library/Developer/Xcode/DerivedData ~/Library/Developer/Xcode/Archives -mindepth 1 -maxdepth 1 -type d -exec du -sh {} + ; } 2>/dev/null | sort -rh | head -30"#, isEnabled: false),
         CleanupCommand(name: "Scan: Large Artifacts",     command: #"find ~ -path "$HOME/Library" -prune -o -type f \( -name "*.ipa" -o -name "*.dmg" -o -name "*.hprof" -o -name "*.apk" -o -name "*.aab" -o -name "*.zip" -o -name "*.jar" \) -size +100M -exec du -h {} + 2>/dev/null | sort -rh | head -30"#, isEnabled: false),
     ]
+
+    /// Exposed for tests so seed-count assertions stay in sync with defaults.
+    static let seedDefaultsCount = seedDefaults.count
 
     private func load() {
         guard let data = defaults.data(forKey: Self.key),
