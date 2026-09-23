@@ -85,9 +85,9 @@ Required repository secrets:
 |---|---|
 | `DEVELOPER_ID_CERT_P12_BASE64` | Developer ID Application cert + key, exported as .p12, base64 |
 | `DEVELOPER_ID_CERT_PASSWORD` | .p12 export password |
-| `NOTARY_API_KEY_P8_BASE64` | App Store Connect API key (.p8), base64 |
-| `NOTARY_API_KEY_ID` | API key ID |
-| `NOTARY_API_ISSUER_ID` | API issuer ID |
+| `APPLE_ID` | Apple ID email of the developer account |
+| `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password for notarization |
+| `APPLE_TEAM_ID` | Developer team ID (`VP83767PVX`) |
 | `SPARKLE_ED_PRIVATE_KEY` | Sparkle EdDSA private key (`generate_keys -x file`) |
 
 Publish the cask from a tap repository (recommended: `homebrew-devprocessmonitor`) or use `Casks/devprocessmonitor.rb` as the source for your tap.
