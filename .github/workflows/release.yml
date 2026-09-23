@@ -1,0 +1,90 @@
+name: Release
+
+# Push a tag like v1.14.0 (must match CFBundleShortVersionString in Info.plist).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, notarize and publish
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches Info.plist
+        run: |
+          plist_version=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Info.plist)
+          if [ "v${plist_version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match Info.plist version v${plist_version}"
+            exit 1
+          fi
+
+      - name: Swift test
+        run: swift test
+
+      - name: Import signing certificate
+        env:
+          CERT_P12_BASE64: ${{ secrets.DEVELOPER_ID_CERT_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/release.keychain-db"
+          keychain_pw=$(openssl rand -hex 16)
+          echo "$CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$keychain_pw" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_pw" "$keychain"
+          security import "$RUNNER_TEMP/cert.p12" -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple: -k "$keychain_pw" "$keychain"
+          security list-keychains -d user -s "$keychain" login.keychain-db
+          rm -f "$RUNNER_TEMP/cert.p12"
+          security find-identity -v -p codesigning "$keychain"
+
+      - name: Build and sign
+        run: make export
+
+      - name: Notarize
+        env:
+          NOTARY_KEY_BASE64: ${{ secrets.NOTARY_API_KEY_P8_BASE64 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.NOTARY_API_ISSUER_ID }}
+        run: |
+          echo "$NOTARY_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+          make notarize NOTARY_AUTH="--key $RUNNER_TEMP/notary.p8 --key-id $NOTARY_KEY_ID --issuer $NOTARY_ISSUER"
+          rm -f "$RUNNER_TEMP/notary.p8"
+
+      - name: Generate Sparkle appcast
+        env:
+          SPARKLE_ED_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          echo "$SPARKLE_ED_KEY" > "$RUNNER_TEMP/sparkle.key"
+          make appcast APPCAST_FLAGS="--ed-key-file $RUNNER_TEMP/sparkle.key --download-url-prefix https://github.com/${{ github.repository }}/releases/latest/download/"
+          rm -f "$RUNNER_TEMP/sparkle.key"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            export/ProcessMonitor.zip export/appcast.xml \
+            --title "$GITHUB_REF_NAME" --generate-notes
+
+      - name: Update Homebrew cask
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          sha=$(shasum -a 256 export/ProcessMonitor.zip | awk '{print $1}')
+          git fetch origin master
+          git checkout -B master origin/master
+          sed -i '' -E "s/^  version \".*\"/  version \"${version}\"/; s/^  sha256 \".*\"/  sha256 \"${sha}\"/" Casks/devprocessmonitor.rb
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(release): cask sha256 for ${GITHUB_REF_NAME}"
+          git push origin master

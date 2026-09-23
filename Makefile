@@ -22,6 +22,11 @@ GENERATE_APPCAST = $(shell find .build/artifacts -name generate_appcast -type f 
 
 # Keychain profile name for notarytool (created via: xcrun notarytool store-credentials)
 NOTARY_PROFILE ?= ProcessMonitor
+# notarytool auth args. CI overrides with App Store Connect API key flags.
+NOTARY_AUTH ?= --keychain-profile "$(NOTARY_PROFILE)"
+
+# Extra generate_appcast args (CI passes --ed-key-file and --download-url-prefix).
+APPCAST_FLAGS ?=
 
 # Signing identity. Override with: make export SIGN_IDENTITY="Developer ID Application: ..."
 SIGN_IDENTITY ?= Developer ID Application
@@ -84,7 +89,7 @@ notarize:
 	@test -f "$(EXPORT_DIR)/ProcessMonitor.zip" || (echo "Run 'make export' first." && exit 1)
 	@echo "Submitting to Apple for notarization..."
 	xcrun notarytool submit "$(EXPORT_DIR)/ProcessMonitor.zip" \
-		--keychain-profile "$(NOTARY_PROFILE)" \
+		$(NOTARY_AUTH) \
 		--wait
 	@echo ""
 	@echo "Stapling notarization ticket to app..."
@@ -101,7 +106,7 @@ appcast:
 	@test -f "$(EXPORT_DIR)/ProcessMonitor.zip" || (echo "Run 'make export && make notarize' first." && exit 1)
 	@test -n "$(GENERATE_APPCAST)" || (echo "generate_appcast not found; run 'swift build' first." && exit 1)
 	@echo "Generating signed appcast.xml from $(EXPORT_DIR)/ProcessMonitor.zip..."
-	"$(GENERATE_APPCAST)" "$(EXPORT_DIR)"
+	"$(GENERATE_APPCAST)" $(APPCAST_FLAGS) "$(EXPORT_DIR)"
 	@echo ""
 	@echo "Done. Upload these to the GitHub release:"
 	@echo "  $(EXPORT_DIR)/ProcessMonitor.zip"

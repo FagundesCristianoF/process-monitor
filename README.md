@@ -72,16 +72,22 @@ Settings are persisted in UserDefaults.
 
 This repo includes a tap-ready cask at `Casks/devprocessmonitor.rb`.
 
-To publish it through Homebrew:
+Releases are automated by `.github/workflows/release.yml`. To publish:
 
-1. Build and notarize the app bundle:
+1. Bump `CFBundleShortVersionString` / `CFBundleVersion` in `Info.plist` and merge to `master`.
+2. Push a matching tag: `git tag v1.14.0 && git push origin v1.14.0`.
 
-   ```bash
-   make export
-   make notarize
-   ```
+The workflow tests, signs, notarizes, builds `appcast.xml`, creates the GitHub release, and commits the new `version` and `sha256` to the cask.
 
-2. Create a GitHub release tagged `v1.0`.
-3. Upload the notarized `ProcessMonitor.zip` from `export/`.
-4. Keep the cask `sha256` in sync with the uploaded zip.
-5. Publish the cask from a tap repository (recommended: `homebrew-devprocessmonitor`) or use this file as the source for your tap.
+Required repository secrets:
+
+| Secret | Content |
+|---|---|
+| `DEVELOPER_ID_CERT_P12_BASE64` | Developer ID Application cert + key, exported as .p12, base64 |
+| `DEVELOPER_ID_CERT_PASSWORD` | .p12 export password |
+| `NOTARY_API_KEY_P8_BASE64` | App Store Connect API key (.p8), base64 |
+| `NOTARY_API_KEY_ID` | API key ID |
+| `NOTARY_API_ISSUER_ID` | API issuer ID |
+| `SPARKLE_ED_PRIVATE_KEY` | Sparkle EdDSA private key (`generate_keys -x file`) |
+
+Publish the cask from a tap repository (recommended: `homebrew-devprocessmonitor`) or use `Casks/devprocessmonitor.rb` as the source for your tap.
