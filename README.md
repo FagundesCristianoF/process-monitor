@@ -72,12 +72,12 @@ Settings are persisted in UserDefaults.
 
 This repo includes a tap-ready cask at `Casks/devprocessmonitor.rb`.
 
-Releases are automated by `.github/workflows/release.yml`. To publish:
+Releases are automated by the `release` job in `.github/workflows/ci.yml`. To publish:
 
-1. Bump `CFBundleShortVersionString` / `CFBundleVersion` in `Info.plist` and merge to `master`.
-2. Push a matching tag: `git tag v1.14.0 && git push origin v1.14.0`.
+1. Bump `CFBundleShortVersionString` / `CFBundleVersion` in `Info.plist`.
+2. Merge to `master`. A push to `master` that changes the version tests, then releases (tag `vX.Y.Z` is created by the release).
 
-The workflow tests, signs, notarizes, builds `appcast.xml`, creates the GitHub release, and commits the new `version` and `sha256` to the cask.
+The job signs, notarizes, builds `appcast.xml`, creates the GitHub release, and commits the new `version` and `sha256` to the cask.
 
 Required repository secrets:
 
