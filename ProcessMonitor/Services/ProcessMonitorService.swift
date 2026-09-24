@@ -238,7 +238,7 @@ final class ProcessMonitorService: ObservableObject {
             task.standardError = FileHandle.nullDevice
             try? task.run()
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
                 self?.refresh()
             }
         }
@@ -257,7 +257,9 @@ final class ProcessMonitorService: ObservableObject {
             }
         }
         guard result == KERN_SUCCESS else { return systemMemoryUsedMB }
-        let pageSize = Double(vm_kernel_page_size)
+        var hostPageSize: vm_size_t = 0
+        host_page_size(mach_host_self(), &hostPageSize)
+        let pageSize = Double(hostPageSize)
         let usedPages = Double(stats.active_count)
             + Double(stats.wire_count)
             + Double(stats.compressor_page_count)
@@ -635,5 +637,5 @@ final class ProcessMonitorService: ObservableObject {
 }
 
 // Work hops between refreshQueue and the main queue by design; mutable state is
-// only touched on those queues, so silence the Sendable capture diagnostics.
+// only touched on those queues, so it is safe to treat as Sendable.
 extension ProcessMonitorService: @unchecked Sendable {}

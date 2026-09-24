@@ -6,7 +6,7 @@ enum Telemetry {
     static let log = Logger(subsystem: "com.cristianofagundes.ProcessMonitor", category: "telemetry")
 
     private static let dsn = "https://fecdd638e46f0ab0962704af702ef004@o4511023893774336.ingest.us.sentry.io/4511431257554944"
-    private static var started = false
+    nonisolated(unsafe) private static var started = false
 
     static func start(enabled: Bool) {
         guard enabled, !started else { return }
