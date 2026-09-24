@@ -118,13 +118,11 @@ jobs:
 
       - name: Notarize
         env:
-          NOTARY_KEY_BASE64: ${{ secrets.NOTARY_API_KEY_P8_BASE64 }}
-          NOTARY_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
-          NOTARY_ISSUER: ${{ secrets.NOTARY_API_ISSUER_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          echo "$NOTARY_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/notary.p8"
-          make notarize NOTARY_AUTH="--key $RUNNER_TEMP/notary.p8 --key-id $NOTARY_KEY_ID --issuer $NOTARY_ISSUER"
-          rm -f "$RUNNER_TEMP/notary.p8"
+          make notarize NOTARY_AUTH='--apple-id "$$APPLE_ID" --password "$$APPLE_APP_PASSWORD" --team-id "$$APPLE_TEAM_ID"'
 
       - name: Generate Sparkle appcast
         env:
@@ -143,11 +141,12 @@ jobs:
             export/ProcessMonitor.zip export/appcast.xml \
             --target "$GITHUB_SHA" --title "v$VERSION" --generate-notes
 
-      - name: Update Homebrew cask
+      - name: Update Homebrew cask (in-repo)
         env:
           VERSION: ${{ needs.detect-release.outputs.version }}
         run: |
           sha=$(shasum -a 256 export/ProcessMonitor.zip | awk '{print $1}')
+          echo "SHA=$sha" >> "$GITHUB_ENV"
           git fetch origin master
           git checkout -B master origin/master
           sed -i '' -E "s/^  version \".*\"/  version \"${VERSION}\"/; s/^  sha256 \".*\"/  sha256 \"${sha}\"/" Casks/devprocessmonitor.rb
@@ -155,3 +154,16 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -am "chore(release): cask sha256 for v${VERSION}"
           git push origin master
+
+      - name: Update Homebrew tap
+        env:
+          VERSION: ${{ needs.detect-release.outputs.version }}
+          TAP_TOKEN: ${{ secrets.TAP_PUSH_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/FagundesCristianoF/homebrew-processmonitor.git" "$RUNNER_TEMP/tap"
+          cd "$RUNNER_TEMP/tap"
+          sed -i '' -E "s/^  version \".*\"/  version \"${VERSION}\"/; s/^  sha256 \".*\"/  sha256 \"${SHA}\"/" Casks/processmonitor.rb
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "processmonitor ${VERSION}"
+          git push origin HEAD
