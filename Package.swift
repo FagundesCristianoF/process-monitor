@@ -1,6 +1,10 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
+// Full strict-concurrency checking (the Swift 6 data-race diagnostics) as warnings,
+// so the code stays ready for the Swift 6 language mode.
+let strictConcurrency: [SwiftSetting] = [.enableUpcomingFeature("StrictConcurrency")]
+
 let package = Package(
     name: "ProcessMonitor",
     platforms: [.macOS(.v13)],
@@ -17,6 +21,7 @@ let package = Package(
             ],
             path: "ProcessMonitor",
             resources: [.process("Resources")],
+            swiftSettings: strictConcurrency,
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])
             ]
@@ -24,7 +29,8 @@ let package = Package(
         .testTarget(
             name: "ProcessMonitorTests",
             dependencies: ["ProcessMonitor"],
-            path: "Tests/ProcessMonitorTests"
+            path: "Tests/ProcessMonitorTests",
+            swiftSettings: strictConcurrency
         )
     ]
 )

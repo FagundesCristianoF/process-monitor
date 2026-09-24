@@ -148,19 +148,18 @@ final class CleanupStoreTests: XCTestCase {
 
     @discardableResult
     private func waitForTerminalState(_ store: CleanupStore, _ id: UUID, timeout: TimeInterval = 5) -> RunState {
-        let exp = expectation(description: "terminal state")
         var result: RunState = .idle
-        func poll() {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
             switch store.runState(for: id) {
             case .success, .failure:
                 result = store.runState(for: id)
-                exp.fulfill()
             default:
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { poll() }
+                RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+                continue
             }
+            break
         }
-        poll()
-        wait(for: [exp], timeout: timeout)
         return result
     }
 
@@ -219,18 +218,15 @@ final class CleanupStoreTests: XCTestCase {
 
     @discardableResult
     private func waitForEstimate(_ store: CleanupStore, _ id: UUID, timeout: TimeInterval = 5) -> SizeEstimate? {
-        let exp = expectation(description: "estimate computed")
         var result: SizeEstimate?
-        func poll() {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
             if case .computed = store.sizeEstimate(for: id) {
                 result = store.sizeEstimate(for: id)
-                exp.fulfill()
-            } else {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { poll() }
+                break
             }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         }
-        poll()
-        wait(for: [exp], timeout: timeout)
         return result
     }
 

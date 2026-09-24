@@ -1,7 +1,8 @@
 import Foundation
 import UserNotifications
 
-final class NotificationService: ObservableObject {
+// permissionGranted is a single Bool written from the authorization callback; hence @unchecked Sendable.
+final class NotificationService: ObservableObject, @unchecked Sendable {
     /// Default minimum interval between notifications for the same app. Acts as a
     /// per-app push rate limit; configurable via ProcessConfigStore. State is held
     /// in memory only, so it resets when the app restarts.
@@ -17,7 +18,7 @@ final class NotificationService: ObservableObject {
     /// production "running headless" path and the test path.
     private let isHosted: Bool
     private let post: (UNNotificationRequest) -> Void
-    private let authorize: (@escaping (Bool, Error?) -> Void) -> Void
+    private let authorize: (@escaping @Sendable (Bool, Error?) -> Void) -> Void
 
     init(
         isHosted: Bool = Bundle.main.bundleIdentifier != nil,
@@ -28,7 +29,7 @@ final class NotificationService: ObservableObject {
                 }
             }
         },
-        authorize: @escaping (@escaping (Bool, Error?) -> Void) -> Void = { completion in
+        authorize: @escaping (@escaping @Sendable (Bool, Error?) -> Void) -> Void = { completion in
             UNUserNotificationCenter.current().requestAuthorization(options: [.alert], completionHandler: completion)
         }
     ) {

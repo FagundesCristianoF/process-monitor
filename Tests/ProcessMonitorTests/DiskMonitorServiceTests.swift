@@ -26,14 +26,12 @@ final class DiskMonitorServiceTests: XCTestCase {
         return config
     }
 
-    private func pollUntil(timeout: TimeInterval = 5, _ cond: @escaping () -> Bool) {
-        let exp = expectation(description: "condition")
-        func poll() {
-            if cond() { exp.fulfill() }
-            else { DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { poll() } }
+    private func pollUntil(timeout: TimeInterval = 5, _ cond: () -> Bool) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !cond() && Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         }
-        poll()
-        wait(for: [exp], timeout: timeout)
+        XCTAssertTrue(cond(), "condition not met within \(timeout)s")
     }
 
     func testRefreshPopulatesStatusesFromRealFilesystem() {

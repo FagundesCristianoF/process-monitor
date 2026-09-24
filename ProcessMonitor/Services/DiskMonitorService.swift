@@ -1,7 +1,9 @@
 import Foundation
 import Combine
 
-final class DiskMonitorService: ObservableObject {
+// @Published state is only written on the main actor (see refreshAsync); polling
+// runs in a detached task, hence @unchecked Sendable.
+final class DiskMonitorService: ObservableObject, @unchecked Sendable {
     @Published var statuses: [DiskVolumeStatus] = []
 
     private var alertActive: [String: Bool] = [:]

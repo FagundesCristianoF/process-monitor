@@ -17,7 +17,9 @@ enum SizeEstimate: Equatable {
     case computed(Int64)
 }
 
-final class CleanupStore: ObservableObject {
+// State is mutated on the main queue only; command execution runs on the serial
+// queues and hops back via DispatchQueue.main, hence @unchecked Sendable.
+final class CleanupStore: ObservableObject, @unchecked Sendable {
     @Published private(set) var commands: [CleanupCommand] = []
     @Published private(set) var runStates: [UUID: RunState] = [:]
     /// Bytes freed on disk by each command's last run (free-space delta, measured
@@ -153,7 +155,7 @@ final class CleanupStore: ObservableObject {
             group.enter()
             estimateQueue.async { [weak self] in
                 let bytes = self?.runEstimate(measurementCommand)
-                DispatchQueue.main.async {
+                DispatchQueue.main.async { [weak self] in
                     if let bytes {
                         self?.sizeEstimates[cmd.id] = .computed(bytes)
                     } else {
@@ -178,7 +180,7 @@ final class CleanupStore: ObservableObject {
         isScanningDisk = true
         estimateQueue.async { [weak self] in
             let entries = DiskUsageScanner.scanTopFolders(limit: 15)
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
                 self?.diskUsageEntries = entries
                 self?.lastDiskScanDate = Date()
                 self?.isScanningDisk = false
@@ -197,7 +199,7 @@ final class CleanupStore: ObservableObject {
     /// around execution and recording it in `freedBytes`. Calls `completion` on the
     /// main queue once the terminal state is set. Sequential execution keeps the
     /// per-command measurement accurate — no overlapping windows on the shared disk.
-    private func performRun(id: UUID, command: String, completion: (() -> Void)? = nil) {
+    private func performRun(id: UUID, command: String, completion: (@Sendable () -> Void)? = nil) {
         DispatchQueue.main.async { [weak self] in
             self?.freedBytes.removeValue(forKey: id)
             self?.setRunState(.running, for: id)
@@ -208,7 +210,7 @@ final class CleanupStore: ObservableObject {
             let after = Self.freeDiskBytes()
             let freed = max(0, after - before)
             let combined = [output.0, output.1].filter { !$0.isEmpty }.joined(separator: "\n")
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
                 self?.freedBytes[id] = freed
                 if output.1.isEmpty {
                     self?.setRunState(.success(output: combined), for: id)
