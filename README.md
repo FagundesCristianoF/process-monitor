@@ -72,7 +72,7 @@ Settings are persisted in UserDefaults.
 
 This repo includes a tap-ready cask at `Casks/devprocessmonitor.rb`.
 
-Releases are automated by the `release` job in `.github/workflows/ci.yml`. To publish:
+Releases are automated by the `.github/workflows/release.yml` pipeline. To publish:
 
 1. Bump `CFBundleShortVersionString` / `CFBundleVersion` in `Info.plist`.
 2. Merge to `master`. A push to `master` that changes the version tests, then releases (tag `vX.Y.Z` is created by the release).
