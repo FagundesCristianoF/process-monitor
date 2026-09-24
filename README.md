@@ -86,7 +86,7 @@ Required repository secrets:
 | `DEVELOPER_ID_CERT_P12_BASE64` | Developer ID Application cert + key, exported as .p12, base64 |
 | `DEVELOPER_ID_CERT_PASSWORD` | .p12 export password |
 | `APPLE_ID` | Apple ID email used for notarization |
-| `APPLE_APP_PASSWORD` | app-specific password for that Apple ID |
+| `APPLE_APP_SPECIFIC_PASSWORD` | app-specific password for that Apple ID |
 | `APPLE_TEAM_ID` | Apple team ID (`VP83767PVX`) |
 | `TAP_PUSH_TOKEN` | fine-grained PAT, contents:write on `homebrew-processmonitor` |
 | `SPARKLE_ED_PRIVATE_KEY` | Sparkle EdDSA private key (`generate_keys -x file`) |

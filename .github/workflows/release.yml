@@ -77,10 +77,10 @@ jobs:
       - name: Notarize
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          make notarize NOTARY_AUTH='--apple-id "$$APPLE_ID" --password "$$APPLE_APP_PASSWORD" --team-id "$$APPLE_TEAM_ID"'
+          make notarize NOTARY_AUTH='--apple-id "$$APPLE_ID" --password "$$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$$APPLE_TEAM_ID"'
 
       - name: Generate Sparkle appcast
         env:
