@@ -633,3 +633,7 @@ final class ProcessMonitorService: ObservableObject {
         }
     }
 }
+
+// Work hops between refreshQueue and the main queue by design; mutable state is
+// only touched on those queues, so silence the Sendable capture diagnostics.
+extension ProcessMonitorService: @unchecked Sendable {}
