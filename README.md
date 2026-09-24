@@ -77,7 +77,7 @@ Releases are automated by the `.github/workflows/release.yml` pipeline. To publi
 1. Bump `CFBundleShortVersionString` / `CFBundleVersion` in `Info.plist`.
 2. Merge to `master`. A push to `master` that changes the version tests, then releases (tag `vX.Y.Z` is created by the release).
 
-The job signs, notarizes, builds `appcast.xml`, creates the GitHub release, and commits the new `version` and `sha256` to the in-repo cask and to the `homebrew-processmonitor` tap.
+The job signs, notarizes, builds `appcast.xml`, creates the GitHub release, and commits the new `version` and `sha256` to the in-repo cask and to the `homebrew-tap` tap.
 
 Required repository secrets:
 
@@ -88,7 +88,7 @@ Required repository secrets:
 | `APPLE_ID` | Apple ID email used for notarization |
 | `APPLE_APP_SPECIFIC_PASSWORD` | app-specific password for that Apple ID |
 | `APPLE_TEAM_ID` | Apple team ID (`VP83767PVX`) |
-| `TAP_PUSH_TOKEN` | fine-grained PAT, contents:write on `homebrew-processmonitor` |
+| `TAP_PUSH_TOKEN` | fine-grained PAT, contents:write on `homebrew-tap` |
 | `SPARKLE_ED_PRIVATE_KEY` | Sparkle EdDSA private key (`generate_keys -x file`) |
 
-Publish the cask from a tap repository (recommended: `homebrew-devprocessmonitor`) or use `Casks/devprocessmonitor.rb` as the source for your tap.
+Publish the cask from a tap repository (`homebrew-tap`) or use `Casks/devprocessmonitor.rb` as the source for your tap.
