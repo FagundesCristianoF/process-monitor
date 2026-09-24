@@ -146,8 +146,8 @@ jobs:
         run: |
           git clone "https://x-access-token:${TAP_TOKEN}@github.com/FagundesCristianoF/homebrew-tap.git" "$RUNNER_TEMP/tap"
           cd "$RUNNER_TEMP/tap"
-          sed -i '' -E "s/^  version \".*\"/  version \"${VERSION}\"/; s/^  sha256 \".*\"/  sha256 \"${SHA}\"/" Casks/processmonitor.rb
+          sed -i '' -E "s/^  version \".*\"/  version \"${VERSION}\"/; s/^  sha256 \".*\"/  sha256 \"${SHA}\"/" Casks/devprocessmonitor.rb
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "processmonitor ${VERSION}"
+          git commit -am "devprocessmonitor ${VERSION}"
           git push origin HEAD:main || { git pull --rebase origin main && git push origin HEAD:main; }
