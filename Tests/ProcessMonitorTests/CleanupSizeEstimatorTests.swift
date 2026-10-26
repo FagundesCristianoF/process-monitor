@@ -3,6 +3,15 @@ import XCTest
 
 final class CleanupSizeEstimatorTests: XCTestCase {
 
+    // MARK: - kondo
+
+    func testKondoBecomesDryRun() {
+        let result = CleanupSizeEstimator.measurementCommand(for: "kondo ~/Projects -a -o 30d")
+        XCTAssertNotNil(result)
+        XCTAssertTrue(result!.contains("kondo ~/Projects -o 30d -n"))
+        XCTAssertFalse(result!.contains(" -a "))
+    }
+
     // MARK: - Path-based
 
     func testSimpleRmRf() {

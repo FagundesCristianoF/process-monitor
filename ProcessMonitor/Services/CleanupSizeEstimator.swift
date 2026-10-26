@@ -7,6 +7,9 @@ import Foundation
 enum CleanupSizeEstimator {
 
     static func measurementCommand(for command: String) -> String? {
+        if let kondoCommand = kondoMeasurementCommand(for: command) {
+            return kondoCommand
+        }
         if let pathCommand = pathBasedMeasurementCommand(for: command) {
             return pathCommand
         }
@@ -58,6 +61,20 @@ enum CleanupSizeEstimator {
 
         guard !targets.isEmpty else { return nil }
         return "du -sck \(targets.joined(separator: " ")) 2>/dev/null | tail -1 | awk '{printf \"%d\", $1*1024}'"
+    }
+
+    // MARK: - kondo
+
+    /// Re-runs the same `kondo` invocation as a dry run (`-n`, minus `-a`/`-q`) and
+    /// converts the summary's total reclaimable size ("... / 28.3GiB") to bytes.
+    private static func kondoMeasurementCommand(for command: String) -> String? {
+        let trimmed = command.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("kondo ") else { return nil }
+        let dryRun = trimmed
+            .split(separator: " ", omittingEmptySubsequences: true)
+            .filter { !["-a", "--all", "-q", "-qq", "--quiet", "-d", "--default"].contains($0) }
+            .joined(separator: " ")
+        return #"command -v kondo >/dev/null 2>&1 && \#(dryRun) -n 2>/dev/null | tail -1 | sed -E 's/.*\/ //' | awk '/TiB/{s=$1*1099511627776} /GiB/{s=$1*1073741824} /MiB/{s=$1*1048576} /KiB/{s=$1*1024} /[0-9]B$/ && !/iB/{s=$1} END{printf "%d", s}'"#
     }
 
     // MARK: - Known-tool heuristics (fixed table, matches seeded non-path commands)

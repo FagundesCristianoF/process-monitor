@@ -13,6 +13,7 @@ cask "devprocessmonitor" do
   end
 
   depends_on macos: :ventura
+  depends_on formula: "kondo"
 
   app "ProcessMonitor.app"
 

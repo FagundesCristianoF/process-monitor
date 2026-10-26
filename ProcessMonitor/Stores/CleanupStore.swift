@@ -382,6 +382,8 @@ final class CleanupStore: ObservableObject, @unchecked Sendable {
         // "$HOME/Library" is pruned to skip noisy system caches, but that also hides
         // DerivedData/Archives (they live under Library) — union in a second find rooted
         // there so Xcode build folders and archives (which hold dSYMs) are still reported.
+        // Requires `brew install kondo`; only touches projects untouched for 30+ days.
+        CleanupCommand(name: "Kondo: Old Project Artifacts", command: "kondo ~/Projects -a -o 30d", isEnabled: false),
         CleanupCommand(name: "Scan: Large Build Folders", command: #"{ find ~ -path "$HOME/Library" -prune -o -type d \( -name build -o -name node_modules -o -name .gradle -o -name Pods \) -prune -exec du -sh {} + ; find ~/Library/Developer/Xcode/DerivedData ~/Library/Developer/Xcode/Archives -mindepth 1 -maxdepth 1 -type d -exec du -sh {} + ; } 2>/dev/null | sort -rh | head -30"#, isEnabled: false),
         CleanupCommand(name: "Scan: Large Artifacts",     command: #"find ~ -path "$HOME/Library" -prune -o -type f \( -name "*.ipa" -o -name "*.dmg" -o -name "*.hprof" -o -name "*.apk" -o -name "*.aab" -o -name "*.zip" -o -name "*.jar" \) -size +100M -exec du -h {} + 2>/dev/null | sort -rh | head -30"#, isEnabled: false),
     ]
