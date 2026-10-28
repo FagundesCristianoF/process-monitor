@@ -46,6 +46,32 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 
 // MARK: - Reusable Style Components
 
+/// Slider that snaps to `step` without passing `step:` to SwiftUI. On macOS,
+/// `Slider(step:)` builds an NSSlider with one tick mark per step, and the
+/// tick-rect cache rebuild during layout hangs the main thread on wide ranges.
+struct SnappedSlider: View {
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    var onEditingChanged: (Bool) -> Void = { _ in }
+
+    var body: some View {
+        Slider(
+            value: Binding(
+                get: { value },
+                set: { value = snapped($0) }
+            ),
+            in: range,
+            onEditingChanged: onEditingChanged
+        )
+    }
+
+    func snapped(_ raw: Double) -> Double {
+        let steps = ((raw - range.lowerBound) / step).rounded()
+        return min(range.upperBound, max(range.lowerBound, range.lowerBound + steps * step))
+    }
+}
+
 struct SettingsLabelStyle: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: 8) {
@@ -366,9 +392,9 @@ struct SettingsView: View {
                         Label("Refresh every", systemImage: "clock.arrow.circlepath")
                             .labelStyle(SettingsLabelStyle())
                             .layoutPriority(1)
-                        Slider(
+                        SnappedSlider(
                             value: $pollIntervalDraft,
-                            in: ProcessConfigStore.minPollInterval...ProcessConfigStore.maxPollInterval,
+                            range: ProcessConfigStore.minPollInterval...ProcessConfigStore.maxPollInterval,
                             step: 1
                         ) { editing in
                             if !editing { configStore.pollIntervalSeconds = pollIntervalDraft }
@@ -386,9 +412,9 @@ struct SettingsView: View {
                         Label("Notify at most every", systemImage: "bell.slash")
                             .labelStyle(SettingsLabelStyle())
                             .layoutPriority(1)
-                        Slider(
+                        SnappedSlider(
                             value: $notifRateLimitMinutesDraft,
-                            in: (ProcessConfigStore.minNotificationRateLimit / 60)...(ProcessConfigStore.maxNotificationRateLimit / 60),
+                            range: (ProcessConfigStore.minNotificationRateLimit / 60)...(ProcessConfigStore.maxNotificationRateLimit / 60),
                             step: 1
                         ) { editing in
                             if !editing {
@@ -804,7 +830,7 @@ private struct DefinitionRow: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .frame(width: 64, alignment: .leading)
-            Slider(value: value, in: Self.minMB...Self.maxMB, step: Self.stepMB) { editing in
+            SnappedSlider(value: value, range: Self.minMB...Self.maxMB, step: Self.stepMB) { editing in
                 if !editing { onChange(value.wrappedValue) }
             }
             .controlSize(.small)
@@ -928,7 +954,7 @@ private struct DiskVolumeSettingsRow: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .frame(width: 64, alignment: .leading)
-            Slider(value: value, in: range, step: step) { editing in
+            SnappedSlider(value: value, range: range, step: step) { editing in
                 if !editing, enabled.wrappedValue { onChange() }
             }
             .controlSize(.small)
@@ -1036,7 +1062,7 @@ private struct AddDiskVolumeView: View {
                         Text(NSLocalizedString("Free space below", comment: ""))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                        Slider(value: $thresholdPercent, in: 1...50, step: 1)
+                        SnappedSlider(value: $thresholdPercent, range: 1...50, step: 1)
                             .controlSize(.small)
                             .disabled(!percentEnabled)
                         Text("\(Int(thresholdPercent))%")
@@ -1054,7 +1080,7 @@ private struct AddDiskVolumeView: View {
                         Text(NSLocalizedString("Free space below", comment: ""))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                        Slider(value: $thresholdGB, in: 1...500, step: 1)
+                        SnappedSlider(value: $thresholdGB, range: 1...500, step: 1)
                             .controlSize(.small)
                             .disabled(!gbEnabled)
                         Text(formatDiskGB(thresholdGB))
@@ -1170,7 +1196,7 @@ private struct AddProcessView: View {
                 fieldGroup(label: NSLocalizedString("Memory Limit", comment: ""), icon: "memorychip") {
                     VStack(spacing: 6) {
                         HStack {
-                            Slider(value: $limitMB, in: Self.minMB...Self.maxMB, step: Self.stepMB)
+                            SnappedSlider(value: $limitMB, range: Self.minMB...Self.maxMB, step: Self.stepMB)
                             Stepper("", value: $limitMB, in: Self.minMB...Self.maxMB, step: Self.stepMB)
                                 .labelsHidden()
                                 .controlSize(.mini)
