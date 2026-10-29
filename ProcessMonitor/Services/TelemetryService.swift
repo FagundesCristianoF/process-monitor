@@ -26,6 +26,9 @@ enum Telemetry {
             opts.attachStacktrace = true
             opts.enableAutoPerformanceTracing = false
             opts.enableNetworkTracking = false
+            // Sparkle appcast 5xx from GitHub is an outage signal, not an app bug
+            // (PROCESS-MONITOR-F/-G).
+            opts.enableCaptureFailedRequests = false
             opts.enableAppHangTracking = true
             opts.tracesSampleRate = 0.0
             opts.beforeSend = { event in
