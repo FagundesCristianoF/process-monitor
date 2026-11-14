@@ -7,6 +7,8 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  # Manual re-run of a release whose push-triggered run failed (e.g. runner issue).
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -19,7 +21,7 @@ jobs:
   test:
     name: Build and Test
     if: github.event_name == 'pull_request'
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -42,7 +44,7 @@ jobs:
 
   detect-release:
     name: Detect version change
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
       release: ${{ steps.detect.outputs.release }}
@@ -62,7 +64,11 @@ jobs:
             python3 -c "import plistlib,sys; print(plistlib.load(sys.stdin.buffer)['CFBundleShortVersionString'])"
           }
           new=$(read_version < Info.plist)
-          old=$(git show "$BEFORE:Info.plist" 2>/dev/null | read_version || true)
+          old=""
+          # Empty BEFORE (manual dispatch) means "no previous version": release if untagged.
+          if [ -n "$BEFORE" ]; then
+            old=$(git show "$BEFORE:Info.plist" 2>/dev/null | read_version || true)
+          fi
           echo "old=$old new=$new"
           echo "version=$new" >> "$GITHUB_OUTPUT"
           if [ "$new" != "$old" ] && ! git ls-remote --exit-code --tags origin "refs/tags/v$new" >/dev/null 2>&1; then
@@ -75,7 +81,7 @@ jobs:
     name: Build, notarize and publish
     needs: [detect-release]
     if: needs.detect-release.outputs.release == 'true'
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v5
