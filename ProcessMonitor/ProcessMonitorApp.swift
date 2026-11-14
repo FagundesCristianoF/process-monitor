@@ -65,7 +65,8 @@ struct ProcessMonitorApp: App {
                 diskMonitorService: diskMonitorService,
                 configStore: configStore,
                 launchAtLoginStore: launchAtLoginStore,
-                cleanupStore: cleanupStore
+                cleanupStore: cleanupStore,
+                updaterService: updaterService
             )
             .frame(width: 420, height: 520)
             .onChange(of: configStore.telemetryEnabled) { enabled in
@@ -75,5 +76,30 @@ struct ProcessMonitorApp: App {
             MenuBarIconLabel(monitorService: monitorService)
         }
         .menuBarExtraStyle(.window)
+        .onChange(of: updaterService.presentation) { presentation in
+            switch presentation {
+            case .forced(let update):
+                // Critical release: block the app and stop both pollers until
+                // the update is installed or the user quits.
+                ForcedUpdateWindowController.shared.show(update: update) {
+                    updaterService.installUpdate()
+                }
+                monitorService.stopPolling()
+                diskMonitorService.stopPolling()
+            case .suggest, .none:
+                break
+            }
+        }
+        .onChange(of: updaterService.installInProgress) { inProgress in
+            // Step aside while Sparkle's install window is up; if the user
+            // cancels it and the update is still required, block again.
+            if inProgress {
+                ForcedUpdateWindowController.shared.hide()
+            } else if case .forced(let update) = updaterService.presentation {
+                ForcedUpdateWindowController.shared.show(update: update) {
+                    updaterService.installUpdate()
+                }
+            }
+        }
     }
 }

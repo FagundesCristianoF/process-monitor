@@ -39,7 +39,7 @@
 	<key>NSUserNotificationUsageDescription</key>
 	<string>Process Monitor sends alerts when a process exceeds its memory limit or disk space runs low.</string>
 	<key>SUAutomaticallyUpdate</key>
-	<true/>
+	<false/>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>

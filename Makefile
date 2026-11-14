@@ -26,6 +26,8 @@ NOTARY_PROFILE ?= ProcessMonitor
 NOTARY_AUTH ?= --keychain-profile "$(NOTARY_PROFILE)"
 
 # Extra generate_appcast args (CI passes --ed-key-file and --download-url-prefix).
+# CI also passes --critical-update-version <ver> when the release commit message
+# contains the line [force-update] — items older than <ver> become critical updates.
 APPCAST_FLAGS ?=
 
 # Signing identity. Override with: make export SIGN_IDENTITY="Developer ID Application: ..."

@@ -1031,6 +1031,56 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer" } },
         "de" : { "stringUnit" : { "state" : "translated", "value" : "Leeren" } }
       }
+    },
+    "Update available: v%@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Update available: v%@" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Atualização disponível: v%@" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Actualización disponible: v%@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mise à jour disponible : v%@" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Update verfügbar: v%@" } }
+      }
+    },
+    "Update" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Update" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Atualizar" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Actualizar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mettre à jour" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktualisieren" } }
+      }
+    },
+    "Update required" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Update required" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Atualização necessária" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Actualización necesaria" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mise à jour requise" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Update erforderlich" } }
+      }
+    },
+    "A required update is available. Install it to keep using Process Monitor." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "A required update is available. Install it to keep using Process Monitor." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Há uma atualização obrigatória. Instale-a para continuar usando o Process Monitor." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Hay una actualización obligatoria. Instálala para seguir usando Process Monitor." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Une mise à jour obligatoire est disponible. Installez-la pour continuer à utiliser Process Monitor." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ein erforderliches Update ist verfügbar. Installiere es, um Process Monitor weiter zu verwenden." } }
+      }
+    },
+    "Install now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Install now" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Instalar agora" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Instalar ahora" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Installer maintenant" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Jetzt installieren" } }
+      }
     }
   }
 }

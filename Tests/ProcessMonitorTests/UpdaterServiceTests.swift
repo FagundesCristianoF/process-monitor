@@ -11,10 +11,10 @@ final class UpdaterServiceTests: XCTestCase {
                       "Updater should auto-check by default for silent updates")
     }
 
-    func testStartsWithAutomaticDownloadEnabled() {
+    func testStartsWithAutomaticDownloadDisabled() {
         let service = UpdaterService(startUpdater: false)
-        XCTAssertTrue(service.automaticallyDownloadsUpdates,
-                      "Updater should auto-download for silent updates")
+        XCTAssertFalse(service.automaticallyDownloadsUpdates,
+                       "Updates must not download silently; the user installs via banner or blocking window")
     }
 
     /// Regression guard: a malformed SUPublicEDKey makes Sparkle's updater fail to
@@ -46,5 +46,20 @@ final class UpdaterServiceTests: XCTestCase {
                                     "SUPublicEDKey is not valid base64")
         XCTAssertEqual(decoded.count, 32,
                        "Ed25519 public key must be 32 bytes, got \(decoded.count)")
+    }
+
+    /// Regression guard: `SUAutomaticallyUpdate = true` in Info.plist makes Sparkle
+    /// download and install in the background, defeating the suggest/force UI.
+    func testInfoPlistDoesNotEnableSilentInstall() throws {
+        var repoRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        while !FileManager.default.fileExists(atPath: repoRoot.appendingPathComponent("Package.swift").path) {
+            let parent = repoRoot.deletingLastPathComponent()
+            guard parent != repoRoot else { XCTFail("repo root not found"); return }
+            repoRoot = parent
+        }
+        let data = try Data(contentsOf: repoRoot.appendingPathComponent("Info.plist"))
+        let plist = try XCTUnwrap(try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
+        XCTAssertNotEqual(plist["SUAutomaticallyUpdate"] as? Bool, true,
+                          "SUAutomaticallyUpdate must not be true: updates are suggested/forced, never silent")
     }
 }

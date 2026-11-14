@@ -265,6 +265,7 @@ struct ProcessListView: View {
     @ObservedObject var configStore: ProcessConfigStore
     @ObservedObject var launchAtLoginStore: LaunchAtLoginStore
     @ObservedObject var cleanupStore: CleanupStore
+    @ObservedObject var updaterService: UpdaterService
     @AppStorage("processSortOrder") private var sortOrder: String = ProcessSortOrder.active.rawValue
     @AppStorage("filterWarningsOnly") private var filterWarningsOnly: Bool = false
     @Namespace private var sortNamespace
@@ -297,6 +298,14 @@ struct ProcessListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if case .suggest(let update) = updaterService.presentation {
+                UpdateBannerView(
+                    update: update,
+                    onUpdate: { updaterService.installUpdate() },
+                    onLater: { updaterService.dismissSuggestion() }
+                )
+                Divider().opacity(0.5)
+            }
             header
             Divider().opacity(0.5)
             sortBar

@@ -111,9 +111,16 @@ jobs:
       - name: Generate Sparkle appcast
         env:
           SPARKLE_ED_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+          VERSION: ${{ needs.detect-release.outputs.version }}
         run: |
           echo "$SPARKLE_ED_KEY" > "$RUNNER_TEMP/sparkle.key"
-          make appcast APPCAST_FLAGS="--ed-key-file $RUNNER_TEMP/sparkle.key --download-url-prefix https://github.com/${{ github.repository }}/releases/latest/download/"
+          APPCAST_FLAGS="--ed-key-file $RUNNER_TEMP/sparkle.key --download-url-prefix https://github.com/${{ github.repository }}/releases/latest/download/"
+          # A commit message containing the line [force-update] marks the release
+          # critical: every app older than this version shows a blocking update window.
+          if git log -1 --format=%B | grep -q '^\[force-update\][[:space:]]*$'; then
+            APPCAST_FLAGS="$APPCAST_FLAGS --critical-update-version $VERSION"
+          fi
+          make appcast APPCAST_FLAGS="$APPCAST_FLAGS"
           rm -f "$RUNNER_TEMP/sparkle.key"
 
       - name: Create GitHub release
